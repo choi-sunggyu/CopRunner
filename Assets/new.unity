@@ -748,11 +748,58 @@ MonoBehaviour:
   minDistance: 2
   maxDistance: 12
   heightOffset: 1.5
-  mouseSpeedX: 10
-  mouseSpeedY: 2
+  mouseSpeedX: 12
+  mouseSpeedY: 5
   minYAngle: -10
   maxYAngle: 60
-  smoothSpeed: 8
+  smoothSpeed: 15
+--- !u!1 &1230351347
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1230351349}
+  - component: {fileID: 1230351348}
+  m_Layer: 0
+  m_Name: CatchDetector
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1230351348
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1230351347}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 737cfa162a8d19d4d93865968282e6d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CatchDetector
+  catchRadius: 1.5
+  checkInterval: 0.1
+  showGizmos: 1
+--- !u!4 &1230351349
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1230351347}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.82574, y: -0, z: -10.19318}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1767958517
 GameObject:
   m_ObjectHideFlags: 0
@@ -809,3 +856,4 @@ SceneRoots:
   - {fileID: 413272806}
   - {fileID: 1767958519}
   - {fileID: 1089225066}
+  - {fileID: 1230351349}
