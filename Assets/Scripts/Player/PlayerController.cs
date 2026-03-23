@@ -15,7 +15,32 @@ public class PlayerController : MonoBehaviour
     private bool    isSprinting;
 
     public float CurrentSpeed { get; private set; }
-    public bool  IsCop        { get; set; } = false;
+    [SerializeField] private bool isCop = false;
+    public bool IsCop => isCop; // 외부에서 읽기만 가능
+
+    private void Start()
+    {
+        // Instance 없으면 잠깐 기다렸다가 등록
+        StartCoroutine(RegisterWithDelay());
+    }
+
+    private System.Collections.IEnumerator RegisterWithDelay()
+    {
+        // 한 프레임 대기 → 모든 Awake() 완료 보장
+        yield return null;
+
+        if (CatchDetector.Instance != null)
+        {
+            if (isCop)
+                CatchDetector.Instance.RegisterCop(this);
+            else
+                CatchDetector.Instance.RegisterRobber(this);
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerController] CatchDetector.Instance 없음 — {gameObject.name}");
+        }
+    }
 
     private void Awake()
     {
