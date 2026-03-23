@@ -18,6 +18,12 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private bool isCop = false;
     public bool IsCop => isCop; // 외부에서 읽기만 가능
 
+    public void SetRole(bool cop)
+    {
+        isCop = cop;
+        Debug.Log($"[PlayerController] {gameObject.name} 역할: {(cop ? "경찰" : "도둑")}");
+    }
+
     private void Start()
     {
         // Instance 없으면 잠깐 기다렸다가 등록
@@ -28,6 +34,7 @@ public class PlayerController : MonoBehaviour
     {
         // 한 프레임 대기 → 모든 Awake() 완료 보장
         yield return null;
+        RoundManager.Instance?.RegisterPlayer(this);
 
         if (CatchDetector.Instance != null)
         {
@@ -66,6 +73,14 @@ public class PlayerController : MonoBehaviour
 
     private void MovePlayer()
     {
+        // Playing 상태일 때만 이동 허용
+        if (GameManager.Instance.CurrentState != GameState.Playing)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            CurrentSpeed = 0f;
+            return;
+        }
+
         if (moveInput.magnitude < 0.1f)
         {
             rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
