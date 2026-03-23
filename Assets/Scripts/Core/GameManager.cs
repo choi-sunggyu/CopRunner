@@ -31,7 +31,7 @@ public class GameManager : MonoBehaviour
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject); // 씬 전환해도 유지
+        DontDestroyOnLoad(gameObject); // 씬 전환해도 유지 (기본 동작: 이전 씬의 모든 GameObject 삭제 / 타이머, 점수 유지 필요)
     }
 
     private void Start()
