@@ -1,11 +1,52 @@
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
+using UnityEngine.UI;
 using UnityEngine.InputSystem;
 
 public class SceneAutoSetup : EditorWindow
 {
     [MenuItem("CopRunner/🚀 씬 자동 세팅")]
+    public static void SetupUI()
+    {
+        // Canvas 생성
+        GameObject canvasObj = new GameObject("Canvas");
+        Canvas canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+
+        canvasObj.AddComponent<GraphicRaycaster>();
+
+        // 패널 생성
+        CreatePanel(canvasObj, "LobbyPanel",     Color.black);
+        CreatePanel(canvasObj, "CountdownPanel", new Color(0,0,0,0.5f));
+        CreatePanel(canvasObj, "HUDPanel",       new Color(0,0,0,0));
+        CreatePanel(canvasObj, "ResultPanel",    new Color(0,0,0,0.7f));
+
+        Debug.Log("[SceneAutoSetup] ✅ UI 세팅 완료!");
+    }
+
+    private static GameObject CreatePanel(
+        GameObject parent, string name, Color color)
+    {
+        GameObject panel = new GameObject(name);
+        panel.transform.SetParent(parent.transform, false);
+
+        Image img = panel.AddComponent<Image>();
+        img.color = color;
+
+        RectTransform rt = panel.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+
+        panel.SetActive(false);
+        return panel;
+    }
     public static void SetupScene()
     {
         Debug.Log("[SceneAutoSetup] 씬 자동 세팅 시작...");
@@ -14,12 +55,26 @@ public class SceneAutoSetup : EditorWindow
         SetupMapPlane();
         SetupPlayer();
         SetupCamera();
+        SetupUIManager();
 
         // 씬 자동 저장
         UnityEditor.SceneManagement.EditorSceneManager
             .SaveOpenScenes();
 
         Debug.Log("[SceneAutoSetup] ✅ 씬 세팅 + 저장 완료!");
+    }
+
+    private static void SetupUIManager()
+    {
+        if (GameObject.Find("UIManager") != null)
+        {
+            Debug.Log("[SceneAutoSetup] UIManager 이미 존재 — 스킵");
+            return;
+        }
+
+        GameObject go = new GameObject("UIManager");
+        go.AddComponent<UIManager>();
+        Debug.Log("[SceneAutoSetup] UIManager 생성 완료");
     }
 
     private static void SetupGameManager()

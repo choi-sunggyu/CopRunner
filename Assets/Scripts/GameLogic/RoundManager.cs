@@ -5,7 +5,7 @@ using System.Collections.Generic;
 public class RoundManager : MonoBehaviour
 {
     [Header("라운드 설정")]
-    [SerializeField] private float roundDuration    = 180f; // 3분
+    [SerializeField] private float roundDuration    = 180f; // 180초
     [SerializeField] private int   countdownSeconds = 3;
 
     [Header("상태")]
@@ -127,6 +127,13 @@ public class RoundManager : MonoBehaviour
     {
         while (RemainingTime > 0)
         {
+            // GameOver 상태면 즉시 중단
+            if (GameManager.Instance.CurrentState == GameState.GameOver)
+            {
+                Debug.Log("[RoundManager] 게임 오버 — 타이머 중단");
+                yield break;
+            }
+
             RemainingTime -= Time.deltaTime;
             yield return null;
         }
@@ -153,21 +160,41 @@ public class RoundManager : MonoBehaviour
 
         OnRoundEnd?.Invoke(copWin);
 
-        // 다음 라운드
-        if (CurrentRound < MaxRounds)
-        {
-            CurrentRound++;
-            StartCoroutine(NextRoundDelay());
-        }
-        else
-        {
-            Debug.Log("[RoundManager] 모든 라운드 종료!");
-        }
+        // ❌ 자동 재시작 제거
+        // if (CurrentRound < MaxRounds) ...
     }
 
     private IEnumerator NextRoundDelay()
     {
         yield return new WaitForSeconds(3f);
         StartCoroutine(StartRound());
+    }
+
+    // 재시작 메서드 추가 — UIManager 버튼에서 호출
+    public void RestartRound()
+    {
+        Debug.Log("[RoundManager] 재시작 요청");
+        ResetRound();
+        StartCoroutine(StartRound());
+    }
+
+    // 초기화 메서드 추가
+    private void ResetRound()
+    {
+        // 타이머 초기화
+        RemainingTime = roundDuration;
+
+        // CatchDetector 리스트 초기화
+        if (CatchDetector.Instance != null)
+            CatchDetector.Instance.ResetDetector();
+
+        // 플레이어 위치 초기화
+        foreach (var player in allPlayers)
+        {
+            if (player != null)
+                player.ResetPosition();
+        }
+
+        Debug.Log("[RoundManager] 초기화 완료");        
     }
 }

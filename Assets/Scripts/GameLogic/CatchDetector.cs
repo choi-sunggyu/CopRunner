@@ -4,20 +4,16 @@ using System.Collections.Generic;
 public class CatchDetector : MonoBehaviour
 {
     [Header("체포 설정")]
-    [SerializeField] private float catchRadius     = 1.5f;  // 체포 가능 거리
-    [SerializeField] private float checkInterval   = 0.1f;  // 판정 주기 (초)
+    [SerializeField] private float catchRadius   = 0.8f;
+    [SerializeField] private float checkInterval = 0.1f;
 
     [Header("디버그")]
-    [SerializeField] private bool showGizmos = true;        // 씬 뷰에서 범위 시각화
+    [SerializeField] private bool showGizmos = true;
 
-    // 등록된 경찰/도둑 목록
     private List<PlayerController> cops    = new List<PlayerController>();
     private List<PlayerController> robbers = new List<PlayerController>();
 
-    // 체포 이벤트 (외부에서 구독 가능)
     public event System.Action<PlayerController> OnRobberCaught;
-
-    // 싱글톤
     public static CatchDetector Instance { get; private set; }
 
     private float timer = 0f;
@@ -34,7 +30,6 @@ public class CatchDetector : MonoBehaviour
 
     private void Update()
     {
-        // 매 프레임 체크하면 부하 — checkInterval마다 체크
         timer += Time.deltaTime;
         if (timer < checkInterval) return;
         timer = 0f;
@@ -42,7 +37,6 @@ public class CatchDetector : MonoBehaviour
         CheckCatch();
     }
 
-    // 경찰/도둑 등록 메서드
     public void RegisterCop(PlayerController cop)
     {
         if (!cops.Contains(cop))
@@ -61,10 +55,10 @@ public class CatchDetector : MonoBehaviour
         }
     }
 
-    // 체포 판정 핵심 로직
     private void CheckCatch()
     {
-        // 체포할 도둑 목록 따로 수집
+        if (GameManager.Instance.CurrentState != GameState.Playing) return;
+
         List<PlayerController> caughtRobbers = new List<PlayerController>();
 
         foreach (var cop in cops)
@@ -75,44 +69,46 @@ public class CatchDetector : MonoBehaviour
             {
                 if (robber == null) continue;
 
+                // 캡슐 콜라이더 기준 실제 거리 계산
+                CapsuleCollider copCol    = cop.GetComponent<CapsuleCollider>();
+                CapsuleCollider robberCol = robber.GetComponent<CapsuleCollider>();
+
                 float distance = Vector3.Distance(
                     cop.transform.position,
                     robber.transform.position
                 );
 
-                if (distance <= catchRadius)
+                // 두 콜라이더 반지름 합산
+                float combinedRadius = catchRadius;
+                if (copCol != null && robberCol != null)
+                    combinedRadius = copCol.radius + robberCol.radius + 0.1f;
+
+                if (distance <= combinedRadius)
                 {
-                    // 바로 제거하지 않고 목록에 추가
                     if (!caughtRobbers.Contains(robber))
                         caughtRobbers.Add(robber);
                 }
             }
         }
 
-        // foreach 끝난 후 제거
         foreach (var robber in caughtRobbers)
-        {
             CatchRobber(robber);
-        }
     }
 
-    // cop 파라미터 제거 — 로그용으로만 쓰던 것
     private void CatchRobber(PlayerController robber)
     {
         robbers.Remove(robber);
-
         Debug.Log($"[CatchDetector] 체포! (남은 도둑: {robbers.Count}명)");
-
         OnRobberCaught?.Invoke(robber);
 
         if (robbers.Count == 0)
         {
             Debug.Log("[CatchDetector] 모든 도둑 체포 완료!");
             GameManager.Instance.ChangeState(GameState.GameOver);
+            RoundManager.Instance?.EndRound(copWin: true);
         }
     }
 
-        // 씬 뷰에서 체포 범위 시각화
     private void OnDrawGizmos()
     {
         if (!showGizmos) return;
@@ -123,5 +119,13 @@ public class CatchDetector : MonoBehaviour
             if (cop != null)
                 Gizmos.DrawWireSphere(cop.transform.position, catchRadius);
         }
+    }
+
+    // 리스트 초기화 메서드 추가
+    public void ResetDetector()
+    {
+        cops.Clear();
+        robbers.Clear();
+        Debug.Log("[CatchDetector] 경찰/도둑 리스트 초기화");
     }
 }

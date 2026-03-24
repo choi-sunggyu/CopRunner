@@ -13,6 +13,8 @@ public class PlayerController : MonoBehaviour
 
     private Vector2 moveInput;
     private bool    isSprinting;
+    // 초기 위치 저장 + 리셋 메서드 추가
+    private Vector3 startPosition;
 
     public float CurrentSpeed { get; private set; }
     [SerializeField] private bool isCop = false;
@@ -26,8 +28,15 @@ public class PlayerController : MonoBehaviour
 
     private void Start()
     {
-        // Instance 없으면 잠깐 기다렸다가 등록
-        StartCoroutine(RegisterWithDelay());
+        startPosition = transform.position; // 초기 위치 저장
+        StartCoroutine(RegisterWithDelay()); // Instance 없으면 잠깐 기다렸다가 등록
+    }
+
+    public void ResetPosition()
+    {
+        transform.position = startPosition;
+        rb.linearVelocity  = Vector3.zero;
+        Debug.Log($"[PlayerController] {gameObject.name} 위치 초기화");
     }
 
     private System.Collections.IEnumerator RegisterWithDelay()
