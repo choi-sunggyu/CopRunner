@@ -13,12 +13,12 @@ public class PlayerController : MonoBehaviour
 
     private Vector2 moveInput;
     private bool    isSprinting;
-    // 초기 위치 저장 + 리셋 메서드 추가
     private Vector3 startPosition;
 
     public float CurrentSpeed { get; private set; }
+
     [SerializeField] private bool isCop = false;
-    public bool IsCop => isCop; // 외부에서 읽기만 가능
+    public bool IsCop => isCop;
 
     public void SetRole(bool cop)
     {
@@ -26,23 +26,29 @@ public class PlayerController : MonoBehaviour
         Debug.Log($"[PlayerController] {gameObject.name} 역할: {(cop ? "경찰" : "도둑")}");
     }
 
+    private void Awake()
+    {
+        rb         = GetComponent<Rigidbody>();
+        mainCamera = Camera.main;
+    }
+
     private void Start()
     {
-        startPosition = transform.position; // 초기 위치 저장
-        StartCoroutine(RegisterWithDelay()); // Instance 없으면 잠깐 기다렸다가 등록
+        startPosition = transform.position;
+        StartCoroutine(RegisterWithDelay());
     }
 
     public void ResetPosition()
     {
         transform.position = startPosition;
-        rb.linearVelocity  = Vector3.zero;
+        rb.velocity        = Vector3.zero; // ✅ 수정
         Debug.Log($"[PlayerController] {gameObject.name} 위치 초기화");
     }
 
     private System.Collections.IEnumerator RegisterWithDelay()
     {
-        // 한 프레임 대기 → 모든 Awake() 완료 보장
         yield return null;
+
         RoundManager.Instance?.RegisterPlayer(this);
 
         if (CatchDetector.Instance != null)
@@ -58,13 +64,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void Awake()
-    {
-        rb         = GetComponent<Rigidbody>();
-        mainCamera = Camera.main;
-    }
-
-    // New Input System 이벤트 콜백 — PlayerInput이 자동 호출
     public void OnMove(InputValue value)
     {
         moveInput = value.Get<Vector2>();
@@ -85,19 +84,18 @@ public class PlayerController : MonoBehaviour
         // Playing 상태일 때만 이동 허용
         if (GameManager.Instance.CurrentState != GameState.Playing)
         {
-            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            rb.velocity  = new Vector3(0f, rb.velocity.y, 0f); // ✅ 수정
             CurrentSpeed = 0f;
             return;
         }
 
         if (moveInput.magnitude < 0.1f)
         {
-            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            rb.velocity  = new Vector3(0f, rb.velocity.y, 0f); // ✅ 수정
             CurrentSpeed = 0f;
             return;
         }
 
-        // CameraFollow에서 카메라 방향 가져오기
         Vector3 camForward = mainCamera.transform.forward;
         Vector3 camRight   = mainCamera.transform.right;
 
@@ -113,11 +111,10 @@ public class PlayerController : MonoBehaviour
         float targetSpeed = (!IsCop && isSprinting) ? sprintSpeed : moveSpeed;
         CurrentSpeed      = targetSpeed;
 
-        Vector3 velocity  = moveDirection * targetSpeed;
-        velocity.y        = rb.linearVelocity.y;
-        rb.linearVelocity = velocity;
+        Vector3 velocity = moveDirection * targetSpeed;
+        velocity.y       = rb.velocity.y;  // ✅ 수정
+        rb.velocity      = velocity;        // ✅ 수정
 
-        // 플레이어는 이동 방향으로만 회전 (카메라와 독립)
         if (moveDirection.magnitude > 0.1f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
