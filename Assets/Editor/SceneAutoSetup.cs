@@ -103,15 +103,16 @@ public class SceneAutoSetup : EditorWindow
         plane.transform.position   = Vector3.zero;
         plane.transform.localScale = new Vector3(5f, 1f, 5f);
 
-        GameObject loaderObj = new GameObject("NaverMapLoader");
-        NaverMapLoader loader = loaderObj.AddComponent<NaverMapLoader>();
+        // NaverMapLoader → GoogleMapLoader 교체
+        GameObject loaderObj = new GameObject("GoogleMapLoader");
+        GoogleMapLoader loader = loaderObj.AddComponent<GoogleMapLoader>();
 
         SerializedObject so = new SerializedObject(loader);
         so.FindProperty("targetRenderer").objectReferenceValue =
             plane.GetComponent<Renderer>();
         so.ApplyModifiedProperties();
 
-        Debug.Log("[SceneAutoSetup] MapPlane + NaverMapLoader 생성 완료");
+        Debug.Log("[SceneAutoSetup] MapPlane + GoogleMapLoader 생성 완료"); 
     }
 
     private static void SetupPlayer()

@@ -26,4 +26,4 @@ Thumbs.db
 
 # API 키 파일 (보안 상 절대 올리면 안 됨)
 Assets/Resources/ApiKeys.cs
-Assets/StreamingAssets/config.json
+Assets/StreamingAssets/config.jsontest_naver_api.py

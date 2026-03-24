@@ -2318,7 +2318,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1767958519}
-  - component: {fileID: 1767958518}
   m_Layer: 0
   m_Name: NaverMapLoader
   m_TagString: Untagged
@@ -2326,20 +2325,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1767958518
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1767958517}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b8558f7465a715541b9c77d6042589eb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NaverMapLoader
-  targetRenderer: {fileID: 413272803}
-  mapColor: {r: 0.6, g: 0.8, b: 0.6, a: 1}
 --- !u!4 &1767958519
 Transform:
   m_ObjectHideFlags: 0
