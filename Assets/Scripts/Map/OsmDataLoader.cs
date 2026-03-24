@@ -65,14 +65,28 @@ public class OsmDataLoader : MonoBehaviour
                 if (request.result == UnityWebRequest.Result.Success)
                 {
                     Debug.Log("[OsmDataLoader] ✅ 데이터 수신 완료");
-                    
-                    // 파싱 시작
+
                     OsmParser parser = new OsmParser();
                     parser.Parse(request.downloadHandler.text);
-
                     Debug.Log($"[OsmDataLoader] 건물 {parser.Buildings.Count}개 파싱 완료");
-                    yield break;
 
+                    // BuildingGenerator 호출 추가
+                    BuildingGenerator generator = FindAnyObjectByType<BuildingGenerator>();
+                    if (generator != null)
+                    {
+                        generator.Initialize(
+                            mapLoader.Latitude,
+                            mapLoader.Longitude,
+                            16 // zoom
+                        );
+                        generator.GenerateBuildings(parser);
+                    }
+                    else
+                    {
+                        Debug.LogError("[OsmDataLoader] ❌ BuildingGenerator를 찾을 수 없음!");
+                    }
+
+                    yield break;
                 }
 
                 retry++;
