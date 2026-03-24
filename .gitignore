@@ -1,0 +1,30 @@
+# Unity 생성 폴더 (빌드 결과물, 캐시)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+
+# Unity 자동 생성 파일
+*.pidb
+*.suo
+*.user
+*.userprefs
+*.unityproj
+*.booproj
+
+# Visual Studio 캐시
+.vs/
+*.csproj
+*.sln
+
+# OS 파일
+.DS_Store
+Thumbs.db
+
+# API 키 파일 (보안 상 절대 올리면 안 됨)
+Assets/Resources/ApiKeys.cs
+Assets/StreamingAssets/config.jsontest_naver_api.py
+*.unitypackage
