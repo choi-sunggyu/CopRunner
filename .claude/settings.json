@@ -4,8 +4,8 @@
       {
         "hooks": [
           {
-            "type": "agent",
-            "prompt": "Check if there are any uncommitted changes in the git repository at c:/Projects/CopRunner6000. Run: cd c:/Projects/CopRunner6000 && git status --porcelain\n\nIf there are changes (output is not empty):\n1. Look at what files changed with: git diff --name-only && git diff --cached --name-only\n2. Determine the appropriate commit type based on the changes:\n   - feat: new feature or new functionality added\n   - fix: bug fix\n   - refactor: code improvement without new feature\n   - chore: config, settings, or non-code changes\n3. Write a concise commit message in Korean describing what was implemented (e.g. 'feat: OsmParser 건물 파싱 구현')\n4. Run these commands sequentially:\n   - git -C c:/Projects/CopRunner6000 add .\n   - git -C c:/Projects/CopRunner6000 commit -m \"<your message>\"\n   - git -C c:/Projects/CopRunner6000 push origin develop\n\nIf there are no changes, do nothing.",
+            "type": "command",
+            "command": "cd /c/Projects/CopRunner6000 && if [ -n \"$(git status --porcelain)\" ]; then git add . && CHANGED=$(git diff --cached --name-only | head -5 | tr '\\n' ', ' | sed 's/,$//') && git commit -m \"chore: 작업 내용 저장 ($CHANGED)\" && git push origin develop; fi",
             "statusMessage": "변경사항 커밋 중...",
             "timeout": 60
           }
