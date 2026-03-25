@@ -35,7 +35,10 @@ public class RoundManager : MonoBehaviour
     {
         if (CatchDetector.Instance != null)
             CatchDetector.Instance.OnRobberCaught += HandleRobberCaught;
+    }
 
+        public void StartGame()
+    {
         StartCoroutine(StartRound());
     }
 

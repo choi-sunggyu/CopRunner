@@ -36,7 +36,8 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        ChangeState(GameState.Lobby);
+        ChangeState(GameState.Playing);
+        //ChangeState(GameState.Lobby);
     }
 
     private void Update()
@@ -65,17 +66,23 @@ public class GameManager : MonoBehaviour
         switch (newState)
         {
             case GameState.Lobby:
-                OnEnterLobby();
+            case GameState.GameOver:
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible   = true;
                 break;
             case GameState.Countdown:
-                OnEnterCountdown();
-                break;
             case GameState.Playing:
-                OnEnterPlaying();
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible   = false;
                 break;
-            case GameState.GameOver:
-                OnEnterGameOver();
-                break;
+        }
+
+        switch (newState)
+        {
+            case GameState.Lobby:      OnEnterLobby();     break;
+            case GameState.Countdown:  OnEnterCountdown(); break;
+            case GameState.Playing:    OnEnterPlaying();   break;
+            case GameState.GameOver:   OnEnterGameOver();  break;
         }
     }
 

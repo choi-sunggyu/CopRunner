@@ -1,19 +1,21 @@
 using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
+using ExitGames.Client.Photon;
 
 public class NetworkManager : MonoBehaviourPunCallbacks
 {
     [Header("방 설정")]
-    [SerializeField] private int   maxPlayersPerRoom = 8;
-    [SerializeField] private string gameVersion      = "1.0";
+    [SerializeField] private int    maxPlayersPerRoom = 8;
+    [SerializeField] private string gameVersion       = "1.0";
 
-    // 싱글톤
     public static NetworkManager Instance { get; private set; }
 
-    // 상태
     public bool IsConnected => PhotonNetwork.IsConnected;
     public bool IsInRoom    => PhotonNetwork.InRoom;
+
+    // 레디 상태 키
+    public const string READY_KEY = "IsReady";
 
     private void Awake()
     {
@@ -23,8 +25,6 @@ public class NetworkManager : MonoBehaviourPunCallbacks
             return;
         }
         Instance = this;
-
-        // 씬 전환 시 자동 동기화
         PhotonNetwork.AutomaticallySyncScene = true;
     }
 
@@ -33,7 +33,6 @@ public class NetworkManager : MonoBehaviourPunCallbacks
         ConnectToPhoton();
     }
 
-    // Photon 서버 연결
     public void ConnectToPhoton()
     {
         if (PhotonNetwork.IsConnected) return;
@@ -43,52 +42,74 @@ public class NetworkManager : MonoBehaviourPunCallbacks
         PhotonNetwork.ConnectUsingSettings();
     }
 
-    // 방 생성
+    public void SetNickname(string nickname)
+    {
+        PhotonNetwork.NickName = nickname;
+    }
+
     public void CreateRoom(string roomName)
     {
         if (!PhotonNetwork.IsConnected) return;
 
         RoomOptions options = new RoomOptions
         {
-            MaxPlayers    = (byte)maxPlayersPerRoom,
-            IsVisible     = true,
-            IsOpen        = true
+            MaxPlayers = (byte)maxPlayersPerRoom,
+            IsVisible  = true,
+            IsOpen     = true
         };
 
         PhotonNetwork.CreateRoom(roomName, options);
         Debug.Log($"[NetworkManager] 방 생성 중: {roomName}");
     }
 
-    // 방 참가
     public void JoinRoom(string roomName)
     {
         if (!PhotonNetwork.IsConnected) return;
-
         PhotonNetwork.JoinRoom(roomName);
-        Debug.Log($"[NetworkManager] 방 참가 중: {roomName}");
     }
 
-    // 빠른 참가 (아무 방이나)
     public void JoinRandomRoom()
     {
         if (!PhotonNetwork.IsConnected) return;
-
         PhotonNetwork.JoinRandomRoom();
-        Debug.Log("[NetworkManager] 랜덤 방 참가 중...");
     }
 
-    // 방 나가기
     public void LeaveRoom()
     {
         PhotonNetwork.LeaveRoom();
-        Debug.Log("[NetworkManager] 방 나감");
     }
 
-    //  ── Photon 콜백 ──────────────────────────────
+    // 레디 상태 설정
+    public void SetReady(bool isReady)
+    {
+        Hashtable props = new Hashtable { { READY_KEY, isReady } };
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        Debug.Log($"[NetworkManager] 레디 상태: {isReady}");
+    }
+
+    // 모든 플레이어 레디 여부 확인
+    public bool IsAllReady()
+    {
+        if (PhotonNetwork.CurrentRoom == null) return false;
+        if (PhotonNetwork.CurrentRoom.PlayerCount < 2) return false;
+
+        foreach (Player player in PhotonNetwork.CurrentRoom.Players.Values)
+        {
+            object isReady;
+            if (!player.CustomProperties.TryGetValue(READY_KEY, out isReady))
+                return false;
+            if (!(bool)isReady)
+                return false;
+        }
+        return true;
+    }
+
+    // ── Photon 콜백 ──────────────────────────────
 
     public override void OnConnectedToMaster()
     {
         Debug.Log("[NetworkManager] ✅ Photon 서버 연결 성공!");
+        LobbyManager.Instance?.OnConnected();
     }
 
     public override void OnDisconnected(DisconnectCause cause)
@@ -103,14 +124,8 @@ public class NetworkManager : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        Debug.Log($"[NetworkManager] ✅ 방 참가 완료! " +
-                  $"플레이어: {PhotonNetwork.CurrentRoom.PlayerCount}명");
-
-        // 방장이면 게임 시작 준비
-        if (PhotonNetwork.IsMasterClient)
-        {
-            Debug.Log("[NetworkManager] 방장으로 입장 — 게임 시작 권한 있음");
-        }
+        Debug.Log($"[NetworkManager] ✅ 방 참가 완료! 플레이어: {PhotonNetwork.CurrentRoom.PlayerCount}명");
+        LobbyManager.Instance?.OnJoinedRoom();
     }
 
     public override void OnJoinRandomFailed(short returnCode, string message)
@@ -121,12 +136,26 @@ public class NetworkManager : MonoBehaviourPunCallbacks
 
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
-        Debug.Log($"[NetworkManager] 새 플레이어 입장: {newPlayer.NickName} " +
-                  $"(총 {PhotonNetwork.CurrentRoom.PlayerCount}명)");
+        Debug.Log($"[NetworkManager] 새 플레이어 입장: {newPlayer.NickName}");
+        LobbyManager.Instance?.RefreshRoomUI();
     }
 
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         Debug.Log($"[NetworkManager] 플레이어 퇴장: {otherPlayer.NickName}");
+        LobbyManager.Instance?.RefreshRoomUI();
+    }
+
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
+    {
+        // 레디 상태 변경 시 UI 갱신
+        if (changedProps.ContainsKey(READY_KEY))
+            LobbyManager.Instance?.RefreshRoomUI();
+    }
+
+    public override void OnMasterClientSwitched(Player newMasterClient)
+    {
+        Debug.Log($"[NetworkManager] 방장 변경: {newMasterClient.NickName}");
+        LobbyManager.Instance?.RefreshRoomUI();
     }
 }
