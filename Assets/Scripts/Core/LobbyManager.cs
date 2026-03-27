@@ -31,6 +31,11 @@ public class LobbyManager : MonoBehaviour
     [SerializeField] private Button          copButton;
     [SerializeField] private Button          robberButton;
 
+    [Header("관전 패널")]
+    [SerializeField] private GameObject spectatorPanel;
+    [SerializeField] private Button     spectatorLeaveButton;
+    [SerializeField] private TextMeshProUGUI spectatorStatusText;
+
     private string selectedRole = "[역할]";
 
     private bool isReady = false;
