@@ -1,17 +1,18 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Photon.Pun;
 
-public class CatchDetector : MonoBehaviour
+public class CatchDetector : MonoBehaviourPun
 {
     [Header("체포 설정")]
-    [SerializeField] private float catchRadius   = 0.8f;
+    [SerializeField] private float catchRadius   = 1.5f;
     [SerializeField] private float checkInterval = 0.1f;
 
     [Header("디버그")]
     [SerializeField] private bool showGizmos = true;
 
-    private List<PlayerController> cops    = new List<PlayerController>();
-    private List<PlayerController> robbers = new List<PlayerController>();
+    private List<PlayerController> cops    = new();
+    private List<PlayerController> robbers = new();
 
     public event System.Action<PlayerController> OnRobberCaught;
     public static CatchDetector Instance { get; private set; }
@@ -30,6 +31,10 @@ public class CatchDetector : MonoBehaviour
 
     private void Update()
     {
+        // 방장만 체포 판정
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (GameManager.Instance.CurrentState != GameState.Playing) return;
+
         timer += Time.deltaTime;
         if (timer < checkInterval) return;
         timer = 0f;
@@ -39,27 +44,19 @@ public class CatchDetector : MonoBehaviour
 
     public void RegisterCop(PlayerController cop)
     {
-        if (!cops.Contains(cop))
-        {
-            cops.Add(cop);
-            Debug.Log($"[CatchDetector] 경찰 등록: {cop.gameObject.name}");
-        }
+        if (!cops.Contains(cop)) cops.Add(cop);
+        Debug.Log($"[CatchDetector] 경찰 등록: {cop.gameObject.name}");
     }
 
     public void RegisterRobber(PlayerController robber)
     {
-        if (!robbers.Contains(robber))
-        {
-            robbers.Add(robber);
-            Debug.Log($"[CatchDetector] 도둑 등록: {robber.gameObject.name}");
-        }
+        if (!robbers.Contains(robber)) robbers.Add(robber);
+        Debug.Log($"[CatchDetector] 도둑 등록: {robber.gameObject.name}");
     }
 
     private void CheckCatch()
     {
-        if (GameManager.Instance.CurrentState != GameState.Playing) return;
-
-        List<PlayerController> caughtRobbers = new List<PlayerController>();
+        List<PlayerController> caughtRobbers = new();
 
         foreach (var cop in cops)
         {
@@ -69,21 +66,12 @@ public class CatchDetector : MonoBehaviour
             {
                 if (robber == null) continue;
 
-                // 캡슐 콜라이더 기준 실제 거리 계산
-                CapsuleCollider copCol    = cop.GetComponent<CapsuleCollider>();
-                CapsuleCollider robberCol = robber.GetComponent<CapsuleCollider>();
-
                 float distance = Vector3.Distance(
                     cop.transform.position,
                     robber.transform.position
                 );
 
-                // 두 콜라이더 반지름 합산
-                float combinedRadius = catchRadius;
-                if (copCol != null && robberCol != null)
-                    combinedRadius = copCol.radius + robberCol.radius + 0.1f;
-
-                if (distance <= combinedRadius)
+                if (distance <= catchRadius)
                 {
                     if (!caughtRobbers.Contains(robber))
                         caughtRobbers.Add(robber);
@@ -92,40 +80,62 @@ public class CatchDetector : MonoBehaviour
         }
 
         foreach (var robber in caughtRobbers)
-            CatchRobber(robber);
+        {
+            // 방장이 RPC로 모든 클라이언트에 체포 알림
+            PhotonView rv = robber.GetComponent<PhotonView>();
+            if (rv != null)
+                photonView.RPC("RPC_CatchRobber", RpcTarget.All, rv.ViewID);
+        }
     }
 
-    private void CatchRobber(PlayerController robber)
+    [PunRPC]
+    private void RPC_CatchRobber(int robberViewID)
     {
+        PlayerController robber = null;
+        foreach (var r in robbers)
+        {
+            PhotonView pv = r.GetComponent<PhotonView>();
+            if (pv != null && pv.ViewID == robberViewID)
+            {
+                robber = r;
+                break;
+            }
+        }
+
+        if (robber == null) return;
+
         robbers.Remove(robber);
         Debug.Log($"[CatchDetector] 체포! (남은 도둑: {robbers.Count}명)");
         OnRobberCaught?.Invoke(robber);
 
+        // 잡힌 도둑 비활성화
+        PhotonView robberPV = robber.GetComponent<PhotonView>();
+        if (robberPV != null && robberPV.IsMine)
+        {
+            // 내가 잡힌 도둑이면 스펙테이터 모드로
+            UIManager.Instance?.ShowSpectator();
+        }
+
         if (robbers.Count == 0)
         {
-            Debug.Log("[CatchDetector] 모든 도둑 체포 완료!");
-            GameManager.Instance.ChangeState(GameState.GameOver);
-            RoundManager.Instance?.EndRound(copWin: true);
+            Debug.Log("[CatchDetector] 모든 도둑 체포!");
+            if (PhotonNetwork.IsMasterClient)
+                RoundManager.Instance?.EndRound(copWin: true);
         }
+    }
+
+    public void ResetDetector()
+    {
+        cops.Clear();
+        robbers.Clear();
     }
 
     private void OnDrawGizmos()
     {
         if (!showGizmos) return;
-
         Gizmos.color = Color.red;
         foreach (var cop in cops)
-        {
             if (cop != null)
                 Gizmos.DrawWireSphere(cop.transform.position, catchRadius);
-        }
-    }
-
-    // 리스트 초기화 메서드 추가
-    public void ResetDetector()
-    {
-        cops.Clear();
-        robbers.Clear();
-        Debug.Log("[CatchDetector] 경찰/도둑 리스트 초기화");
     }
 }
