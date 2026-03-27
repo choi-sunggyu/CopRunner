@@ -8,18 +8,23 @@ public class PlayerSync : MonoBehaviourPun, IPunObservable
     private Quaternion networkRotation;
     private float      lag;
 
-    [SerializeField] private float smoothSpeed = 10f;
+    [SerializeField] private float smoothSpeed = 15f;
 
     private void Update()
     {
         // 내 캐릭터가 아니면 네트워크 위치로 부드럽게 이동
         if (!photonView.IsMine)
         {
-            transform.position = Vector3.MoveTowards(
-                transform.position,
-                networkPosition,
-                smoothSpeed * Time.deltaTime
-            );
+            // 거리 멀면 즉시 이동, 가까우면 부드럽게
+            float dist = Vector3.Distance(transform.position, networkPosition);
+            if (dist > 5f)
+                transform.position = networkPosition;
+            else
+                transform.position = Vector3.MoveTowards(
+                    transform.position,
+                    networkPosition,
+                    smoothSpeed * Time.deltaTime
+                );
 
             transform.rotation = Quaternion.RotateTowards(
                 transform.rotation,
