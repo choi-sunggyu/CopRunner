@@ -30,9 +30,8 @@ public class LobbyManager : MonoBehaviour
     [Header("역할 선택")]
     [SerializeField] private Button          copButton;
     [SerializeField] private Button          robberButton;
-    [SerializeField] private TextMeshProUGUI selectedRoleText;
 
-    private string selectedRole = "미선택";
+    private string selectedRole = "[역할]";
 
     private bool isReady = false;
     private List<GameObject> playerEntries = new(); // 항목 직접 관리
@@ -174,7 +173,7 @@ public class LobbyManager : MonoBehaviour
 
         TextMeshProUGUI btnText = readyButton?.GetComponentInChildren<TextMeshProUGUI>();
         if (btnText != null)
-            btnText.text = isReady ? "레디 취소" : "✅ 레디";
+            btnText.text = isReady ? "레디 취소" : "레디";
 
         RefreshRoomUI();
     }
@@ -189,23 +188,52 @@ public class LobbyManager : MonoBehaviour
             return;
         }
 
-        // 경찰 1명 이상 있는지 확인
-        bool hasCop = false;
+        int copCount    = 0;
+        int robberCount = 0;
+        int totalCount  = PhotonNetwork.CurrentRoom.PlayerCount;
+
         foreach (Player player in PhotonNetwork.CurrentRoom.Players.Values)
         {
             string role = NetworkManager.Instance.GetPlayerRole(player);
-            if (role == "경찰") { hasCop = true; break; }
+            if (role == "경찰")      copCount++;
+            else if (role == "도둑") robberCount++;
         }
 
-        if (!hasCop)
+        // 역할 미선택 플레이어 있는지
+        if (copCount + robberCount < totalCount)
+        {
+            SetStatus("모든 플레이어가 역할을 선택해야 합니다!");
+            return;
+        }
+
+        // 경찰 없음
+        if (copCount == 0)
         {
             SetStatus("경찰이 최소 1명 필요합니다!");
             return;
         }
 
+        // 도둑 없음
+        if (robberCount == 0)
+        {
+            SetStatus("도둑이 최소 1명 필요합니다!");
+            return;
+        }
+
+        // 경찰이 도둑보다 많음
+        if (copCount > robberCount)
+        {
+            SetStatus($"경찰({copCount}명)이 도둑({robberCount}명)보다 많을 수 없습니다!");
+            return;
+        }
+
+        Debug.Log($"[LobbyManager] 게임 시작 — 경찰:{copCount} 도둑:{robberCount}");
+
         PhotonView pv = GetComponent<PhotonView>();
         if (pv != null)
             pv.RPC("RPC_StartGame", RpcTarget.All);
+        else
+            Debug.LogError("[LobbyManager] PhotonView 없음!");
     }
 
     [PunRPC]
@@ -219,7 +247,16 @@ public class LobbyManager : MonoBehaviour
 
     private void OnLeaveRoom()
     {
-        isReady = false;
+        isReady   = false;
+        selectedRole = "역할";
+
+        // Photon CustomProperties 초기화
+        NetworkManager.Instance.SetRole("");
+        NetworkManager.Instance.SetReady(false);
+
+        // 버튼 색상 초기화
+        UpdateRoleButtons("");
+
         NetworkManager.Instance.LeaveRoom();
         ShowMainMenu();
     }
@@ -233,7 +270,17 @@ public class LobbyManager : MonoBehaviour
 
     public void OnJoinedRoom()
     {
-        isReady = false;
+        isReady      = false;
+        selectedRole = "역할";
+
+        // 역할 버튼 색상 초기화
+        UpdateRoleButtons("");
+
+        // 레디 버튼 텍스트 초기화
+        TextMeshProUGUI btnText = readyButton?.GetComponentInChildren<TextMeshProUGUI>();
+        if (btnText != null)
+            btnText.text = "레디";
+
         ShowRoomPanel();
     }
 
@@ -247,14 +294,19 @@ public class LobbyManager : MonoBehaviour
 
         if (playerListContent != null)
         {
-            // 기존 항목 즉시 삭제 (Destroy 대신 DestroyImmediate 사용)
-            foreach (GameObject entry in playerEntries)
-                if (entry != null) DestroyImmediate(entry);
+            // Content 아래 자식 전부 삭제 (안전한 방식)
+            for (int i = playerListContent.childCount - 1; i >= 0; i--)
+            {
+                Transform child = playerListContent.GetChild(i);
+                DestroyImmediate(child.gameObject);
+            }
             playerEntries.Clear();
 
-            // 새 항목 생성
+            Debug.Log($"[LobbyManager] 플레이어 수: {PhotonNetwork.CurrentRoom.Players.Count}");
+
             foreach (Player player in PhotonNetwork.CurrentRoom.Players.Values)
             {
+                Debug.Log($"[LobbyManager] 항목 생성: {player.NickName}");
                 GameObject entry = Instantiate(playerEntryPrefab, playerListContent);
                 playerEntries.Add(entry);
 
@@ -265,14 +317,12 @@ public class LobbyManager : MonoBehaviour
                     player.CustomProperties.TryGetValue(NetworkManager.READY_KEY, out isReadyObj);
                     bool ready = isReadyObj != null && (bool)isReadyObj;
 
-                    // 역할 가져오기
-                    string role = NetworkManager.Instance.GetPlayerRole(player);
-
+                    string role      = NetworkManager.Instance.GetPlayerRole(player);
                     string masterTag = player.IsMasterClient ? "[방장] " : "";
-                    string readyTag  = ready ? " ✅" : " ⬜";
-                    string roleTag   = role != "미선택" ? $" [{role}]" : " [미선택]";
+                    string readyTag  = ready ? "[레디]" : "[대기]";
 
-                    text.text = $"{masterTag}{player.NickName}{roleTag}{readyTag}";
+                    text.text = $"{masterTag}{player.NickName} [{role}] {readyTag}";
+                    Debug.Log($"[LobbyManager] 텍스트: {text.text}");
                 }
             }
         }
@@ -297,28 +347,28 @@ public class LobbyManager : MonoBehaviour
         selectedRole = role;
         NetworkManager.Instance.SetRole(role);
 
-        // 버튼 색상으로 선택 상태 표시
+        // 버튼 색상 업데이트
+        UpdateRoleButtons(role);
+    }
+
+    private void UpdateRoleButtons(string selectedRole)
+    {
         if (copButton != null)
         {
-            ColorBlock cb = copButton.colors;
-            cb.normalColor = role == "경찰"
-                ? new Color(0.2f, 0.4f, 0.8f)  // 선택됨 (파랑)
-                : new Color(0.5f, 0.5f, 0.5f); // 미선택 (회색)
+            ColorBlock cb    = copButton.colors;
+            cb.normalColor   = selectedRole == "경찰"
+                ? new Color(0.2f, 0.4f, 0.9f)  // 선택됨
+                : new Color(0.4f, 0.4f, 0.4f); // 미선택
             copButton.colors = cb;
         }
 
         if (robberButton != null)
         {
-            ColorBlock cb = robberButton.colors;
-            cb.normalColor = role == "도둑"
-                ? new Color(0.8f, 0.2f, 0.2f)  // 선택됨 (빨강)
-                : new Color(0.5f, 0.5f, 0.5f); // 미선택 (회색)
+            ColorBlock cb    = robberButton.colors;
+            cb.normalColor   = selectedRole == "도둑"
+                ? new Color(0.9f, 0.2f, 0.2f)  // 선택됨
+                : new Color(0.4f, 0.4f, 0.4f); // 미선택
             robberButton.colors = cb;
         }
-
-        if (selectedRoleText != null)
-            selectedRoleText.text = $"선택: {role}";
-
-        RefreshRoomUI();
     }
 }

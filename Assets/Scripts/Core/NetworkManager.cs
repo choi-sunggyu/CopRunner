@@ -118,8 +118,11 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     {
         object role;
         if (player.CustomProperties.TryGetValue(ROLE_KEY, out role))
-            return (string)role;
-        return "미선택";
+        {
+            string roleStr = (string)role;
+            return string.IsNullOrEmpty(roleStr) ? "역할" : roleStr;
+        }
+        return "역할";
     }
 
     // ── Photon 콜백 ──────────────────────────────
@@ -167,7 +170,7 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
     {
         // 레디 상태 변경 시 UI 갱신
-        if (changedProps.ContainsKey(READY_KEY))
+        if (changedProps.ContainsKey(READY_KEY) || changedProps.ContainsKey(ROLE_KEY))
             LobbyManager.Instance?.RefreshRoomUI();
     }
 
