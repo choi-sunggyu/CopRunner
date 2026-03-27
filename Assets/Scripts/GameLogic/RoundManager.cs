@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Photon.Pun;
 
 public class RoundManager : MonoBehaviour
 {
@@ -39,6 +40,12 @@ public class RoundManager : MonoBehaviour
 
         public void StartGame()
     {
+        StopAllCoroutines();
+        allPlayers.Clear();
+
+        if (CatchDetector.Instance != null)
+            CatchDetector.Instance.ResetDetector();
+
         StartCoroutine(StartRound());
     }
 
@@ -59,9 +66,16 @@ public class RoundManager : MonoBehaviour
         Debug.Log($"[RoundManager] {CurrentRound}라운드 시작 준비");
         GameManager.Instance.ChangeState(GameState.Lobby);
 
-        AssignRoles();
+        // 플레이어 스폰 (게임 시작 시)
+        PlayerSpawner spawner = FindAnyObjectByType<PlayerSpawner>();
+        spawner?.ResetSpawn();
 
+        AssignRoles();
         yield return StartCoroutine(Countdown());
+
+        // 카운트다운 후 스폰
+        if (spawner != null)
+            spawner.SpawnOnRoad(new List<Vector2>());
 
         GameManager.Instance.ChangeState(GameState.Playing);
         RemainingTime = roundDuration;
@@ -74,24 +88,40 @@ public class RoundManager : MonoBehaviour
 
     private void AssignRoles()
     {
+        // 네트워크 플레이어 자동 수집
+        PlayerController[] found = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        foreach (var p in found)
+            if (!allPlayers.Contains(p))
+                allPlayers.Add(p);
+
         if (allPlayers.Count == 0)
         {
             Debug.LogWarning("[RoundManager] 등록된 플레이어 없음");
             return;
         }
 
-        for (int i = 0; i < allPlayers.Count; i++)
+        foreach (PlayerController player in allPlayers)
         {
-            bool isCop = (i == 0);
-            allPlayers[i].SetRole(isCop);
+            // PhotonView로 해당 Photon 플레이어 찾기
+            PhotonView pv = player.GetComponent<PhotonView>();
+            if (pv == null) continue;
+
+            // 해당 플레이어가 선택한 역할 가져오기
+            string role = NetworkManager.Instance.GetPlayerRole(pv.Owner);
+            bool isCop  = role == "경찰";
+
+            player.SetRole(isCop);
 
             if (isCop)
-                CatchDetector.Instance?.RegisterCop(allPlayers[i]);
+                CatchDetector.Instance?.RegisterCop(player);
             else
-                CatchDetector.Instance?.RegisterRobber(allPlayers[i]);
+                CatchDetector.Instance?.RegisterRobber(player);
 
-            Debug.Log($"[RoundManager] {allPlayers[i].gameObject.name} " +
-                      $"→ {(isCop ? "경찰" : "도둑")}");
+            // HUD 역할 텍스트 업데이트 (내 캐릭터만)
+            if (pv.IsMine)
+                UIManager.Instance?.UpdateRoleText(isCop);
+
+            Debug.Log($"[RoundManager] {player.gameObject.name} → {role}");
         }
     }
 
@@ -152,8 +182,7 @@ public class RoundManager : MonoBehaviour
     public void RestartRound()
     {
         Debug.Log("[RoundManager] 재시작 요청");
-        ResetRound();
-        StartCoroutine(StartRound());
+        StartGame();
     }
 
     private void ResetRound()

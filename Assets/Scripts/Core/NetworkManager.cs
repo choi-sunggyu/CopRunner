@@ -16,6 +16,7 @@ public class NetworkManager : MonoBehaviourPunCallbacks
 
     // 레디 상태 키
     public const string READY_KEY = "IsReady";
+    public const string ROLE_KEY  = "Role";
 
     private void Awake()
     {
@@ -102,6 +103,23 @@ public class NetworkManager : MonoBehaviourPunCallbacks
                 return false;
         }
         return true;
+    }
+
+    // 역할 설정
+    public void SetRole(string role)
+    {
+        Hashtable props = new Hashtable { { ROLE_KEY, role } };
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+        Debug.Log($"[NetworkManager] 역할 설정: {role}");
+    }
+
+    // 플레이어 역할 가져오기
+    public string GetPlayerRole(Player player)
+    {
+        object role;
+        if (player.CustomProperties.TryGetValue(ROLE_KEY, out role))
+            return (string)role;
+        return "미선택";
     }
 
     // ── Photon 콜백 ──────────────────────────────

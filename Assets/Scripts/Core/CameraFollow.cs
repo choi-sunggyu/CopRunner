@@ -63,6 +63,12 @@ public class CameraFollow : MonoBehaviour
         distance     = Mathf.Clamp(distance - scroll * 0.01f, minDistance, maxDistance);
     }
 
+    public void SetTarget(Transform newTarget)
+    {
+        target = newTarget;
+        Debug.Log($"[CameraFollow] 타겟 설정: {newTarget.name}");
+    }
+
     private void UpdateCameraPosition()
     {
         Quaternion rotation   = Quaternion.Euler(currentY, currentX, 0f);
@@ -86,6 +92,10 @@ public class CameraFollow : MonoBehaviour
 
     private void Update()
     {
+        // Playing 상태일 때만 ESC 토글 허용
+        if (GameManager.Instance == null) return;
+        if (GameManager.Instance.CurrentState != GameState.Playing) return;
+
         if (Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             if (Cursor.lockState == CursorLockMode.Locked)

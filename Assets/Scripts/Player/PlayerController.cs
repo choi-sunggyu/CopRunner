@@ -1,3 +1,4 @@
+using Photon.Pun;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -81,6 +82,9 @@ public class PlayerController : MonoBehaviour
 
     private void MovePlayer()
     {
+        PhotonView pv = GetComponent<PhotonView>();
+        if (pv != null && !pv.IsMine) return;
+
         // Playing 상태일 때만 이동 허용
         if (GameManager.Instance.CurrentState != GameState.Playing)
         {

@@ -2,10 +2,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using TMPro;
+using Photon.Pun;
 
 public class UIManager : MonoBehaviour
 {
-    // 싱글톤
     public static UIManager Instance { get; private set; }
 
     [Header("패널")]
@@ -25,7 +25,8 @@ public class UIManager : MonoBehaviour
     [Header("결과 화면")]
     [SerializeField] private TextMeshProUGUI resultTitleText;
     [SerializeField] private TextMeshProUGUI resultDetailText;
-    [SerializeField] private Button          restartButton;
+    [SerializeField] private Button          restartButton;   // 방장만
+    [SerializeField] private Button          leaveButton;     // 모두
 
     private void Awake()
     {
@@ -39,7 +40,9 @@ public class UIManager : MonoBehaviour
 
     private void Start()
     {
-        // RoundManager 이벤트 구독
+        // 시작 시 모든 패널 비활성화
+        SetAllPanelsInactive();
+
         if (RoundManager.Instance != null)
         {
             RoundManager.Instance.OnCountdown  += ShowCountdown;
@@ -47,11 +50,13 @@ public class UIManager : MonoBehaviour
             RoundManager.Instance.OnRoundEnd   += ShowResult;
         }
 
-        // 버튼 이벤트
-        restartButton?.onClick.AddListener(OnRestartClicked);
+        leaveButton?.onClick.AddListener(() => {
+            NetworkManager.Instance?.LeaveRoom();
+            LobbyManager.Instance?.ShowMainMenu();
+            SetAllPanelsInactive();
+        });
 
-        // 초기 상태
-        ShowLobby();
+        restartButton?.onClick.AddListener(OnRestartClicked);
     }
 
     private void OnDestroy()
@@ -66,100 +71,102 @@ public class UIManager : MonoBehaviour
 
     private void Update()
     {
-        // HUD 타이머 업데이트
-        if (hudPanel.activeSelf && RoundManager.Instance != null)
-        {
+        if (hudPanel != null && hudPanel.activeSelf && RoundManager.Instance != null)
             UpdateTimer(RoundManager.Instance.RemainingTime);
-        }
     }
 
     // ── 패널 전환 ──────────────────────────────
 
-    public void ShowLobby()
+    public void HideLobbyUI()
     {
         SetAllPanelsInactive();
-        lobbyPanel.SetActive(true);
+        Debug.Log("[UIManager] 모든 UI 숨김");
     }
 
     public void ShowHUD()
     {
         SetAllPanelsInactive();
-        hudPanel.SetActive(true);
+        hudPanel?.SetActive(true);
     }
 
     public void ShowCountdown(int count)
     {
         SetAllPanelsInactive();
-        countdownPanel.SetActive(true);
+        countdownPanel?.SetActive(true);
         StartCoroutine(AnimateCountdown(count));
     }
 
     public void ShowResult(bool copWin)
     {
         SetAllPanelsInactive();
-        resultPanel.SetActive(true);
+        resultPanel?.SetActive(true);
 
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible   = true;
+        if (resultTitleText  != null)
+            resultTitleText.text  = copWin ? "경찰 승리!" : "도둑 승리!";
+        if (resultDetailText != null)
+            resultDetailText.text = copWin
+                ? "모든 도둑이 체포됐습니다!"
+                : "시간이 초과됐습니다!";
 
-        resultTitleText.text = copWin ? "경찰 승리!" : "도둑 승리!";
-        resultDetailText.text = copWin
-            ? "모든 도둑이 체포됐습니다!"
-            : "시간이 초과됐습니다!";
+        // 방장만 재시작 버튼 표시
+        if (restartButton != null)
+            restartButton.gameObject.SetActive(PhotonNetwork.IsMasterClient);
+
+        // 나가기 버튼 표시
+        if (leaveButton != null)
+            leaveButton.gameObject.SetActive(true);
     }
 
     private void SetAllPanelsInactive()
     {
-        lobbyPanel?    .SetActive(false);
+        lobbyPanel?.SetActive(false);
         countdownPanel?.SetActive(false);
-        hudPanel?      .SetActive(false);
-        resultPanel?   .SetActive(false);
+        hudPanel?.SetActive(false);
+        resultPanel?.SetActive(false);
     }
 
     // ── HUD 업데이트 ───────────────────────────
 
     private void UpdateTimer(float remainingTime)
     {
+        if (timerText == null) return;
         int minutes = Mathf.FloorToInt(remainingTime / 60f);
         int seconds = Mathf.FloorToInt(remainingTime % 60f);
-        timerText.text = $"{minutes:00}:{seconds:00}";
-
-        // 30초 이하 빨간색 경고
+        timerText.text  = $"{minutes:00}:{seconds:00}";
         timerText.color = remainingTime <= 30f ? Color.red : Color.white;
     }
 
     public void UpdateRoleText(bool isCop)
     {
+        if (roleText == null) return;
         roleText.text  = isCop ? "경찰" : "도둑";
         roleText.color = isCop ? Color.blue : Color.red;
     }
 
     public void UpdatePlayerCount(int count)
     {
-        playerCountText.text = $"플레이어: {count}명";
+        if (playerCountText != null)
+            playerCountText.text = $"플레이어: {count}명";
     }
 
     // ── 카운트다운 애니메이션 ──────────────────
 
     private IEnumerator AnimateCountdown(int count)
     {
-        countdownText.text = count > 0 ? count.ToString() : "출발!";
+        if (countdownText == null) yield break;
 
-        // 크게 시작
+        countdownText.text = count > 0 ? count.ToString() : "출발!";
         countdownText.transform.localScale = Vector3.one * 1.5f;
 
-        float elapsed = 0f;
+        float elapsed  = 0f;
         float duration = 0.8f;
 
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
-
-            // 점점 작아지면서 사라짐
             countdownText.transform.localScale =
                 Vector3.Lerp(Vector3.one * 1.5f, Vector3.one, t);
-
             countdownText.color = new Color(1f, 1f, 1f, 1f - t * 0.3f);
             yield return null;
         }
@@ -169,11 +176,19 @@ public class UIManager : MonoBehaviour
 
     private void OnRestartClicked()
     {
-        // 게임 시작 시 마우스 다시 잠금
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible   = false;
+        if (!PhotonNetwork.IsMasterClient) return;
 
-        Debug.Log("[UIManager] 재시작 버튼 클릭");
+        PhotonView pv = GetComponent<PhotonView>();
+        if (pv != null)
+            pv.RPC("RPC_RestartGame", RpcTarget.All);
+    }
+
+    [PunRPC]
+    private void RPC_RestartGame()
+    {
+        SetAllPanelsInactive();
+        PlayerSpawner spawner = FindAnyObjectByType<PlayerSpawner>();
+        spawner?.ResetSpawn();
         RoundManager.Instance?.RestartRound();
     }
 }

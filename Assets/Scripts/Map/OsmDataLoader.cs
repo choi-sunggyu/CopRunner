@@ -114,8 +114,9 @@ public class OsmDataLoader : MonoBehaviour
                             roadPositions.Add(pos);
                         }
 
-                        Debug.Log($"[OsmDataLoader] 도로 노드 {roadPositions.Count}개 전달");
-                        spawner.SpawnOnRoad(roadPositions);
+                        // 스폰 대신 캐싱
+                        spawner.CacheRoadPoints(roadPositions); // RoundManager에서 게임 시작 시 스폰하도록 변경, 즉시 스폰은 하지 않음
+                        Debug.Log($"[OsmDataLoader] 도로 노드 {roadPositions.Count}개 캐싱 완료");
                     }
                     else
                     {

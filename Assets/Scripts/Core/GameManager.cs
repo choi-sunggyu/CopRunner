@@ -36,8 +36,8 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        ChangeState(GameState.Playing);
-        //ChangeState(GameState.Lobby);
+        //ChangeState(GameState.Playing);
+        ChangeState(GameState.Lobby);
     }
 
     private void Update()
