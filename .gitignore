@@ -30,3 +30,5 @@ Assets/StreamingAssets/config.jsontest_naver_api.py
 *.unitypackage
 Assets/Scripts/Core/ApiKeys.cs
 Assets/Scripts/Core/ApiKeys.cs.meta
+Assets/Fonts/*.asset
+Assets/Fonts/*.asset.meta
