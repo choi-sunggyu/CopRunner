@@ -87,6 +87,24 @@ public class UIManager : MonoBehaviour
     {
         SetAllPanelsInactive();
         hudPanel?.SetActive(true);
+
+        // 역할 즉시 업데이트
+        PhotonView localPlayer = PhotonNetwork.LocalPlayer != null
+            ? null : null;
+
+        // RoundManager에서 역할 가져와서 업데이트
+        PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+        foreach (PlayerController pc in players)
+        {
+            PhotonView pv = pc.GetComponent<PhotonView>();
+            if (pv != null && pv.IsMine)
+            {
+                UpdateRoleText(pc.IsCop);
+                break;
+            }
+        }
+
+        UpdatePlayerCount(PhotonNetwork.CurrentRoom?.PlayerCount ?? 0);
     }
 
     public void ShowCountdown(int count)
