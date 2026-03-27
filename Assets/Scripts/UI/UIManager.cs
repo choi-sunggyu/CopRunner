@@ -28,6 +28,16 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Button          restartButton;   // 방장만
     [SerializeField] private Button          leaveButton;     // 모두
 
+    [Header("스펙테이터")]
+    [SerializeField] private GameObject spectatorPanel;
+    [SerializeField] private Button     spectatorLeaveButton;
+
+    public void ShowSpectator()
+    {
+        SetAllPanelsInactive();
+        spectatorPanel?.SetActive(true);
+    }
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -51,6 +61,13 @@ public class UIManager : MonoBehaviour
         }
 
         leaveButton?.onClick.AddListener(() => {
+            NetworkManager.Instance?.LeaveRoom();
+            LobbyManager.Instance?.ShowMainMenu();
+            SetAllPanelsInactive();
+        });
+
+        spectatorLeaveButton?.onClick.AddListener(() =>
+        {
             NetworkManager.Instance?.LeaveRoom();
             LobbyManager.Instance?.ShowMainMenu();
             SetAllPanelsInactive();
