@@ -158,6 +158,7 @@ public class UIManager : MonoBehaviour
         countdownPanel?.SetActive(false);
         hudPanel?.SetActive(false);
         resultPanel?.SetActive(false);
+        spectatorPanel?.SetActive(false);
     }
 
     // ── HUD 업데이트 ───────────────────────────
