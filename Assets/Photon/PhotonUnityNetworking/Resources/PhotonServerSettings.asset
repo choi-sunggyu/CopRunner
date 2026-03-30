@@ -42,6 +42,8 @@ MonoBehaviour:
   - RPC_StartGame
   - RPC_RestartGame
   - RPC_CatchRobber
+  - RPC_BeginGame
+  - RPC_ReceiveOsmData
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 1

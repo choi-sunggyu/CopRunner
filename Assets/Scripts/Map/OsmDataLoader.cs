@@ -2,10 +2,10 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
 using System.Collections.Generic;
+using Photon.Pun;
 
-public class OsmDataLoader : MonoBehaviour
+public class OsmDataLoader : MonoBehaviourPun
 {
-    // ✅ 맵 생성 완료 신호 — NetworkReadyTracker가 구독
     public static event System.Action OnMapReady;
 
     [SerializeField] private GoogleMapLoader mapLoader;
@@ -27,28 +27,33 @@ public class OsmDataLoader : MonoBehaviour
 
         if (mapLoader == null)
         {
-            Debug.LogError("[OsmDataLoader] ❌ GoogleMapLoader를 찾을 수 없음!");
+            Debug.LogError("[OsmDataLoader] ❌ GoogleMapLoader 없음!");
             return;
         }
 
-        StartCoroutine(LoadOsmData());
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // ✅ MasterClient만 API 호출
+            Debug.Log("[OsmDataLoader] MasterClient → OSM 데이터 로드 시작");
+            StartCoroutine(LoadOsmData());
+        }
+        else
+        {
+            // ✅ 나머지는 MasterClient가 보내줄 때까지 대기
+            Debug.Log("[OsmDataLoader] 클라이언트 → MasterClient 데이터 수신 대기");
+        }
     }
 
     private IEnumerator LoadOsmData()
     {
-        float lat = mapLoader.Latitude;
-        float lon = mapLoader.Longitude;
-
+        float lat   = mapLoader.Latitude;
+        float lon   = mapLoader.Longitude;
         float delta = rangeKm / 111f;
-        float south = lat - delta;
-        float north = lat + delta;
-        float west  = lon - delta;
-        float east  = lon + delta;
 
         string query = $"[out:xml][timeout:60];" +
                        $"(" +
-                       $"way[\"building\"]({south},{west},{north},{east});" +
-                       $"way[\"highway\"]({south},{west},{north},{east});" +
+                       $"way[\"building\"]({lat-delta},{lon-delta},{lat+delta},{lon+delta});" +
+                       $"way[\"highway\"]({lat-delta},{lon-delta},{lat+delta},{lon+delta});" +
                        $");" +
                        $"(._;>;);" +
                        $"out body;";
@@ -60,7 +65,7 @@ public class OsmDataLoader : MonoBehaviour
 
             while (retry < maxRetry)
             {
-                Debug.Log($"[OsmDataLoader] 서버: {server} (시도 {retry + 1}/{maxRetry})");
+                Debug.Log($"[OsmDataLoader] 서버: {server} ({retry+1}/{maxRetry})");
 
                 using UnityWebRequest request = UnityWebRequest.Get(url);
                 request.timeout = 60;
@@ -69,81 +74,84 @@ public class OsmDataLoader : MonoBehaviour
                 if (request.result == UnityWebRequest.Result.Success)
                 {
                     string text = request.downloadHandler.text;
-                    Debug.Log($"[OsmDataLoader] 데이터 길이: {text.Length}");
-                    Debug.Log($"[OsmDataLoader] 내용 앞부분: {text[..Mathf.Min(500, text.Length)]}");
 
                     if (!text.Contains("<osm"))
                     {
                         retry++;
-                        Debug.LogWarning($"[OsmDataLoader] ⚠️ OSM 데이터 아님 → {retryDelay}초 후 재시도");
                         yield return new WaitForSeconds(retryDelay);
                         continue;
                     }
 
-                    // 1. 파싱
-                    OsmParser parser = new OsmParser();
-                    parser.Parse(text);
-                    Debug.Log($"[OsmDataLoader] 건물 {parser.Buildings.Count}개 파싱 완료");
+                    Debug.Log($"[OsmDataLoader] ✅ 데이터 수신 성공 ({text.Length} bytes)");
 
-                    // 2. 건물 생성
-                    BuildingGenerator generator = FindAnyObjectByType<BuildingGenerator>();
-                    if (generator != null)
-                    {
-                        generator.Initialize(mapLoader.Latitude, mapLoader.Longitude, 16);
-                        generator.GenerateBuildings(parser);
-                    }
-                    else
-                    {
-                        Debug.LogError("[OsmDataLoader] ❌ BuildingGenerator를 찾을 수 없음!");
-                    }
+                    // ✅ 로컬 처리
+                    yield return StartCoroutine(ProcessOsmData(text));
 
-                    // ✅ 건물 MeshCollider 활성화 대기 (1프레임으로 부족할 수 있어서 3프레임 대기)
-                    yield return null;
-                    yield return null;
-                    yield return null;
-
-                    // 3. 도로 노드 캐싱
-                    PlayerSpawner spawner = FindAnyObjectByType<PlayerSpawner>();
-                    if (spawner != null)
-                    {
-                        List<Vector2> roadPositions = new();
-                        foreach (long id in parser.RoadNodes)
-                        {
-                            if (!parser.Nodes.ContainsKey(id)) continue;
-                            Vector2 latLon = parser.Nodes[id];
-                            Vector2 pos    = OsmCoordConverter.LatLonToUnity(
-                                latLon.x, latLon.y,
-                                mapLoader.Latitude, mapLoader.Longitude,
-                                OsmCoordConverter.MetersPerPixel(mapLoader.Latitude, 16)
-                            );
-                            roadPositions.Add(pos);
-                        }
-
-                        spawner.CacheRoadPoints(roadPositions);
-                        Debug.Log($"[OsmDataLoader] 도로 노드 {roadPositions.Count}개 캐싱 완료");
-                    }
-                    else
-                    {
-                        Debug.LogError("[OsmDataLoader] ❌ PlayerSpawner를 찾을 수 없음!");
-                    }
-
-                    // ✅ 모든 준비 완료 → 신호 발송
-                    Debug.Log("[OsmDataLoader] ✅ 맵 준비 완료 신호 발송");
-                    OnMapReady?.Invoke();
+                    // ✅ 다른 클라이언트에게 RPC로 전송
+                    photonView.RPC("RPC_ReceiveOsmData", RpcTarget.Others, text);
 
                     yield break;
                 }
 
                 retry++;
-                Debug.LogWarning($"[OsmDataLoader] ⚠️ {request.error} → {retryDelay}초 후 재시도");
                 yield return new WaitForSeconds(retryDelay);
             }
-
-            Debug.LogWarning($"[OsmDataLoader] 서버 포기 → 다음 서버 시도");
         }
 
-        // ✅ 모든 서버 실패해도 신호는 보내야 게임이 멈추지 않음
-        Debug.LogError("[OsmDataLoader] ❌ 모든 서버 실패. 빈 맵으로 진행");
+        Debug.LogError("[OsmDataLoader] ❌ 모든 서버 실패");
+        // 실패해도 신호는 보냄
+        OnMapReady?.Invoke();
+    }
+
+    [PunRPC]
+    private void RPC_ReceiveOsmData(string osmText)
+    {
+        Debug.Log("[OsmDataLoader] ✅ MasterClient로부터 OSM 데이터 수신");
+        StartCoroutine(ProcessOsmData(osmText));
+    }
+
+    private IEnumerator ProcessOsmData(string text)
+    {
+        // 1. 파싱
+        OsmParser parser = new OsmParser();
+        parser.Parse(text);
+        Debug.Log($"[OsmDataLoader] 건물 {parser.Buildings.Count}개 파싱");
+
+        // 2. 건물 생성
+        BuildingGenerator generator = FindAnyObjectByType<BuildingGenerator>();
+        if (generator != null)
+        {
+            generator.Initialize(mapLoader.Latitude, mapLoader.Longitude, 16);
+            generator.GenerateBuildings(parser);
+        }
+
+        // 3. MeshCollider 활성화 대기
+        yield return null;
+        yield return null;
+        yield return null;
+
+        // 4. 도로 노드 캐싱
+        PlayerSpawner spawner = FindAnyObjectByType<PlayerSpawner>();
+        if (spawner != null)
+        {
+            List<Vector2> roadPositions = new();
+            foreach (long id in parser.RoadNodes)
+            {
+                if (!parser.Nodes.ContainsKey(id)) continue;
+                Vector2 latLon = parser.Nodes[id];
+                Vector2 pos    = OsmCoordConverter.LatLonToUnity(
+                    latLon.x, latLon.y,
+                    mapLoader.Latitude, mapLoader.Longitude,
+                    OsmCoordConverter.MetersPerPixel(mapLoader.Latitude, 16)
+                );
+                roadPositions.Add(pos);
+            }
+            spawner.CacheRoadPoints(roadPositions);
+            Debug.Log($"[OsmDataLoader] 도로 {roadPositions.Count}개 캐싱 완료");
+        }
+
+        // 5. 완료 신호
+        Debug.Log("[OsmDataLoader] ✅ 맵 준비 완료");
         OnMapReady?.Invoke();
     }
 }

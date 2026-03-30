@@ -4,6 +4,7 @@ using TMPro;
 using Photon.Pun;
 using Photon.Realtime;
 using System.Collections.Generic;
+using System.Collections;
 
 public class LobbyManager : MonoBehaviour
 {
@@ -248,16 +249,50 @@ public class LobbyManager : MonoBehaviour
         HideAllLobbyUI();
         UIManager.Instance?.HideLobbyUI();
 
-        // ✅ 맵이 이미 로딩됐으면 바로 시작, 아니면 대기
+        // 맵 준비만 완료하고 MasterClient가 전원 확인 후 시작
         if (IsMapLoaded())
         {
-            RoundManager.Instance?.StartGame();
+            OnLocalMapReady();
         }
         else
         {
             Debug.Log("[LobbyManager] 맵 로딩 대기 중...");
-            OsmDataLoader.OnMapReady += OnMapReadyThenStart;
+            OsmDataLoader.OnMapReady += OnMapReadyCallback;
         }
+    }
+
+    private void OnMapReadyCallback()
+    {
+        OsmDataLoader.OnMapReady -= OnMapReadyCallback;
+        OnLocalMapReady();
+    }
+
+    private void OnLocalMapReady()
+    {
+        Debug.Log("[LobbyManager] ✅ 내 맵 준비 완료");
+
+        // ✅ MasterClient가 전원 준비 확인 후 게임 시작 RPC 발송
+        if (PhotonNetwork.IsMasterClient)
+            StartCoroutine(WaitAllPlayersMapReady());
+    }
+
+    private IEnumerator WaitAllPlayersMapReady()
+    {
+        Debug.Log("[LobbyManager] 전원 맵 준비 대기 중...");
+        yield return new WaitUntil(() => NetworkManager.Instance.AllPlayersMapReady());
+
+        Debug.Log("[LobbyManager] ✅ 전원 맵 준비 완료 → 게임 시작 RPC 전송");
+        PhotonView pv = GetComponent<PhotonView>();
+        if (pv != null)
+            pv.RPC("RPC_BeginGame", RpcTarget.All);
+    }
+
+    // ✅ 전원 동시에 게임 시작
+    [PunRPC]
+    private void RPC_BeginGame()
+    {
+        Debug.Log("[LobbyManager] ✅ RPC_BeginGame 수신 → StartGame");
+        RoundManager.Instance?.StartGame();
     }
 
     private bool IsMapLoaded()

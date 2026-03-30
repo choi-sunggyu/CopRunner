@@ -77,11 +77,21 @@ public class CatchDetector : MonoBehaviourPun
                     robber.transform.position
                 );
 
+                Debug.Log($"[CatchDetector] 경찰-도둑 거리: {distance:F2} | 기준: {catchRadius}");
+
                 if (distance <= catchRadius)
                 {
                     // ✅ 즉시 등록해서 같은 프레임에 중복 RPC 방지
                     caughtViewIDs.Add(rv.ViewID);
+
+                    // ✅ photonView null 방어
+                    if (photonView == null)
+                    {
+                        Debug.LogError("[CatchDetector] PhotonView 없음! Inspector 확인 필요");
+                        return;
+                    }
                     photonView.RPC("RPC_CatchRobber", RpcTarget.All, rv.ViewID);
+                    Debug.Log($"[CatchDetector] ✅ 체포 RPC 전송 → ViewID:{rv.ViewID}");
                 }
             }
         }

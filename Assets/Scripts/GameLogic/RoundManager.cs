@@ -68,38 +68,36 @@ public class RoundManager : MonoBehaviour
         PlayerSpawner spawner = FindAnyObjectByType<PlayerSpawner>();
         spawner?.ResetSpawn();
 
-        // ✅ 맵 대기 제거 — 이미 Room 단계에서 로딩 완료
-        // MasterClient 기준 전원 준비 확인만 유지
-        if (PhotonNetwork.IsMasterClient)
-        {
-            yield return new WaitUntil(() => NetworkManager.Instance.AllPlayersMapReady());
-            Debug.Log("[RoundManager] ✅ 전원 맵 준비 완료");
-        }
+        // ✅ 맵 대기 제거 — LobbyManager.RPC_BeginGame에서 이미 보장됨
 
+        // 1. 카운트다운
         yield return StartCoroutine(Countdown());
 
+        // 2. 스폰
         if (spawner != null)
             spawner.SpawnOnRoad(new List<Vector2>());
 
-        // 스폰된 내 플레이어 감지 대기 (최대 3초)
-        float waitTime = 0f;
-        while (waitTime < 3f)
+        // 3. 전원 스폰 대기
+        int   expectedCount = PhotonNetwork.CurrentRoom.PlayerCount;
+        float waitTime      = 0f;
+
+        Debug.Log($"[RoundManager] 스폰 대기 | 예상: {expectedCount}명");
+
+        while (waitTime < 5f)
         {
             PlayerController[] found =
                 FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
 
-            bool myPlayerSpawned = false;
-            foreach (var p in found)
-            {
-                PhotonView pv = p.GetComponent<PhotonView>();
-                if (pv != null && pv.IsMine) { myPlayerSpawned = true; break; }
-            }
-            if (myPlayerSpawned) break;
+            Debug.Log($"[RoundManager] 현재 스폰: {found.Length}/{expectedCount}명");
+
+            if (found.Length >= expectedCount) break;
 
             waitTime += Time.deltaTime;
             yield return null;
         }
 
+        // 4. 역할 배정
+        Debug.Log("[RoundManager] ✅ 전원 스폰 확인 → AssignRoles");
         AssignRoles();
 
         GameManager.Instance.ChangeState(GameState.Playing);
