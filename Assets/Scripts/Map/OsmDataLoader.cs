@@ -5,9 +5,12 @@ using System.Collections.Generic;
 
 public class OsmDataLoader : MonoBehaviour
 {
+    // ✅ 맵 생성 완료 신호 — NetworkReadyTracker가 구독
+    public static event System.Action OnMapReady;
+
     [SerializeField] private GoogleMapLoader mapLoader;
-    [SerializeField] private float rangeKm = 0.1f;
-    [SerializeField] private int maxRetry = 3;
+    [SerializeField] private float rangeKm    = 0.1f;
+    [SerializeField] private int   maxRetry   = 3;
     [SerializeField] private float retryDelay = 5f;
 
     private string[] servers = new string[]
@@ -42,7 +45,6 @@ public class OsmDataLoader : MonoBehaviour
         float west  = lon - delta;
         float east  = lon + delta;
 
-        // 건물 + 도로 함께 요청
         string query = $"[out:xml][timeout:60];" +
                        $"(" +
                        $"way[\"building\"]({south},{west},{north},{east});" +
@@ -53,8 +55,8 @@ public class OsmDataLoader : MonoBehaviour
 
         foreach (string server in servers)
         {
-            string url = server + UnityWebRequest.EscapeURL(query);
-            int retry = 0;
+            string url   = server + UnityWebRequest.EscapeURL(query);
+            int    retry = 0;
 
             while (retry < maxRetry)
             {
@@ -78,11 +80,12 @@ public class OsmDataLoader : MonoBehaviour
                         continue;
                     }
 
+                    // 1. 파싱
                     OsmParser parser = new OsmParser();
                     parser.Parse(text);
                     Debug.Log($"[OsmDataLoader] 건물 {parser.Buildings.Count}개 파싱 완료");
 
-                    // 건물 생성 (건물보다 스폰이 먼저 되면 충돌 체크가 안 됨)
+                    // 2. 건물 생성
                     BuildingGenerator generator = FindAnyObjectByType<BuildingGenerator>();
                     if (generator != null)
                     {
@@ -94,10 +97,12 @@ public class OsmDataLoader : MonoBehaviour
                         Debug.LogError("[OsmDataLoader] ❌ BuildingGenerator를 찾을 수 없음!");
                     }
 
-                    // 건물 생성 후 한 프레임 대기 → 콜라이더 활성화 기다림
+                    // ✅ 건물 MeshCollider 활성화 대기 (1프레임으로 부족할 수 있어서 3프레임 대기)
+                    yield return null;
+                    yield return null;
                     yield return null;
 
-                    // 플레이어 스폰
+                    // 3. 도로 노드 캐싱
                     PlayerSpawner spawner = FindAnyObjectByType<PlayerSpawner>();
                     if (spawner != null)
                     {
@@ -114,14 +119,17 @@ public class OsmDataLoader : MonoBehaviour
                             roadPositions.Add(pos);
                         }
 
-                        // 스폰 대신 캐싱
-                        spawner.CacheRoadPoints(roadPositions); // RoundManager에서 게임 시작 시 스폰하도록 변경, 즉시 스폰은 하지 않음
+                        spawner.CacheRoadPoints(roadPositions);
                         Debug.Log($"[OsmDataLoader] 도로 노드 {roadPositions.Count}개 캐싱 완료");
                     }
                     else
                     {
                         Debug.LogError("[OsmDataLoader] ❌ PlayerSpawner를 찾을 수 없음!");
                     }
+
+                    // ✅ 모든 준비 완료 → 신호 발송
+                    Debug.Log("[OsmDataLoader] ✅ 맵 준비 완료 신호 발송");
+                    OnMapReady?.Invoke();
 
                     yield break;
                 }
@@ -134,6 +142,8 @@ public class OsmDataLoader : MonoBehaviour
             Debug.LogWarning($"[OsmDataLoader] 서버 포기 → 다음 서버 시도");
         }
 
-        Debug.LogError("[OsmDataLoader] ❌ 모든 서버 실패.");
+        // ✅ 모든 서버 실패해도 신호는 보내야 게임이 멈추지 않음
+        Debug.LogError("[OsmDataLoader] ❌ 모든 서버 실패. 빈 맵으로 진행");
+        OnMapReady?.Invoke();
     }
 }
