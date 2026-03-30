@@ -28,8 +28,7 @@ public class PlayerController : MonoBehaviour
         isCop = cop;
         Debug.Log($"[PlayerController] {gameObject.name} 역할: {(cop ? "경찰" : "도둑")}");
 
-        // 이미 Start()가 지났을 경우 대비해 여기서도 등록
-        RegisterToCatchDetector();
+        // ✅ 등록 로직 없음 — RoundManager.AssignRoles()가 담당
     }
 
     private void RegisterToCatchDetector()

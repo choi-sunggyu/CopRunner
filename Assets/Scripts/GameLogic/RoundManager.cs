@@ -100,6 +100,9 @@ public class RoundManager : MonoBehaviour
             return;
         }
 
+        // ✅ 역할 배정 전 CatchDetector 초기화 — 중복 등록 방지
+        CatchDetector.Instance?.ResetDetector();
+
         foreach (PlayerController player in allPlayers)
         {
             // PhotonView로 해당 Photon 플레이어 찾기
@@ -110,14 +113,17 @@ public class RoundManager : MonoBehaviour
             string role = NetworkManager.Instance.GetPlayerRole(pv.Owner);
             bool isCop  = role == "경찰";
 
+            // 1. 역할 설정
             player.SetRole(isCop);
 
+            // 2. 역할 확정 후 등록 (순서 중요)
             if (isCop)
                 CatchDetector.Instance?.RegisterCop(player);
             else
                 CatchDetector.Instance?.RegisterRobber(player);
 
             // HUD 역할 텍스트 업데이트 (내 캐릭터만)
+            // 3. 내 HUD만 업데이트
             if (pv.IsMine)
                 UIManager.Instance?.UpdateRoleText(isCop);
 
