@@ -15,6 +15,8 @@ public class PlayerController : MonoBehaviour
     private Vector2 moveInput;
     private bool    isSprinting;
     private Vector3 startPosition;
+    private bool isCaught = false;
+    public bool IsCaught => isCaught;
 
     public float CurrentSpeed { get; private set; }
 
@@ -25,6 +27,25 @@ public class PlayerController : MonoBehaviour
     {
         isCop = cop;
         Debug.Log($"[PlayerController] {gameObject.name} 역할: {(cop ? "경찰" : "도둑")}");
+
+        // 이미 Start()가 지났을 경우 대비해 여기서도 등록
+        RegisterToCatchDetector();
+    }
+
+    private void RegisterToCatchDetector()
+    {
+        if (CatchDetector.Instance == null) return;
+
+        if (isCop)
+            CatchDetector.Instance.RegisterCop(this);
+        else
+            CatchDetector.Instance.RegisterRobber(this);
+    }
+
+    public void SetCaught()
+    {
+        isCaught = true;
+        Debug.Log($"[PlayerController] {gameObject.name} 체포됨 — 이동 불가");
     }
 
     private void Awake()
@@ -51,18 +72,6 @@ public class PlayerController : MonoBehaviour
         yield return null;
 
         RoundManager.Instance?.RegisterPlayer(this);
-
-        if (CatchDetector.Instance != null)
-        {
-            if (isCop)
-                CatchDetector.Instance.RegisterCop(this);
-            else
-                CatchDetector.Instance.RegisterRobber(this);
-        }
-        else
-        {
-            Debug.LogWarning($"[PlayerController] CatchDetector.Instance 없음 — {gameObject.name}");
-        }
     }
 
     public void OnMove(InputValue value)
@@ -84,6 +93,9 @@ public class PlayerController : MonoBehaviour
     {
         PhotonView pv = GetComponent<PhotonView>();
         if (pv != null && !pv.IsMine) return;
+
+        // ✅ 잡혔으면 이동 불가
+        if (isCaught) return;
 
         // Playing 상태일 때만 이동 허용
         if (GameManager.Instance.CurrentState != GameState.Playing)
