@@ -91,9 +91,8 @@ public class LobbyManager : MonoBehaviour
         mainMenuPanel?.SetActive(false);
         roomPanel?.SetActive(false);
 
-        // 플레이어 목록 항목 전부 삭제
         foreach (GameObject entry in playerEntries)
-            if (entry != null) DestroyImmediate(entry);
+            if (entry != null) Destroy(entry);
         playerEntries.Clear();
     }
 
@@ -301,12 +300,6 @@ public class LobbyManager : MonoBehaviour
         return ready != null && (bool)ready;
     }
 
-    private void OnMapReadyThenStart()
-    {
-        OsmDataLoader.OnMapReady -= OnMapReadyThenStart;
-        RoundManager.Instance?.StartGame();
-    }
-
     private void OnLeaveRoom()
     {
         isReady   = false;
@@ -356,12 +349,8 @@ public class LobbyManager : MonoBehaviour
 
         if (playerListContent != null)
         {
-            // Content 아래 자식 전부 삭제 (안전한 방식)
             for (int i = playerListContent.childCount - 1; i >= 0; i--)
-            {
-                Transform child = playerListContent.GetChild(i);
-                DestroyImmediate(child.gameObject);
-            }
+                Destroy(playerListContent.GetChild(i).gameObject);
             playerEntries.Clear();
 
             Debug.Log($"[LobbyManager] 플레이어 수: {PhotonNetwork.CurrentRoom.Players.Count}");

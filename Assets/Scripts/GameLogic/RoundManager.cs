@@ -123,6 +123,9 @@ public class RoundManager : MonoBehaviour
             return;
         }
 
+        // 파괴된 플레이어 제거
+        allPlayers.RemoveAll(p => p == null);
+
         // 역할 배정 전 초기화 — 중복 등록 방지
         CatchDetector.Instance?.ResetDetector();
 
@@ -205,23 +208,4 @@ public class RoundManager : MonoBehaviour
         StartGame();
     }
 
-    private void ResetRound()
-    {
-        RemainingTime = roundDuration;
-
-        if (CatchDetector.Instance != null)
-            CatchDetector.Instance.ResetDetector();
-
-        foreach (var player in allPlayers)
-            if (player != null)
-                player.ResetPosition();
-
-        Debug.Log("[RoundManager] 초기화 완료");
-    }
-
-    private IEnumerator NextRoundDelay()
-    {
-        yield return new WaitForSeconds(3f);
-        StartCoroutine(StartRound());
-    }
 }

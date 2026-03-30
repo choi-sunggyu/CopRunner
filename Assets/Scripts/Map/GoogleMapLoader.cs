@@ -39,8 +39,7 @@ public class GoogleMapLoader : MonoBehaviour
         }
         else
         {
-            Debug.LogError($"[GoogleMapLoader] ❌ 실패: {request.error}");
-            Debug.LogError($"[GoogleMapLoader] 응답: {request.downloadHandler.text}");
+            Debug.LogError($"[GoogleMapLoader] 실패: {request.error}");
             LoadTempMap();
         }
     }

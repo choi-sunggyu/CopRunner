@@ -9,8 +9,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float sprintSpeed = 9f;
     [SerializeField] private float rotateSpeed = 10f;
 
-    private Rigidbody rb;
-    private Camera    mainCamera;
+    private Rigidbody  rb;
+    private Camera     mainCamera;
+    private PhotonView photonViewCached;
 
     private Vector2 moveInput;
     private bool    isSprinting;
@@ -31,16 +32,6 @@ public class PlayerController : MonoBehaviour
         // ✅ 등록 로직 없음 — RoundManager.AssignRoles()가 담당
     }
 
-    private void RegisterToCatchDetector()
-    {
-        if (CatchDetector.Instance == null) return;
-
-        if (isCop)
-            CatchDetector.Instance.RegisterCop(this);
-        else
-            CatchDetector.Instance.RegisterRobber(this);
-    }
-
     public void SetCaught()
     {
         isCaught = true;
@@ -49,8 +40,9 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
-        rb         = GetComponent<Rigidbody>();
-        mainCamera = Camera.main;
+        rb                = GetComponent<Rigidbody>();
+        mainCamera        = Camera.main;
+        photonViewCached  = GetComponent<PhotonView>();
     }
 
     private void Start()
@@ -90,8 +82,7 @@ public class PlayerController : MonoBehaviour
 
     private void MovePlayer()
     {
-        PhotonView pv = GetComponent<PhotonView>();
-        if (pv != null && !pv.IsMine) return;
+        if (photonViewCached != null && !photonViewCached.IsMine) return;
 
         // ✅ 잡혔으면 이동 불가
         if (isCaught) return;

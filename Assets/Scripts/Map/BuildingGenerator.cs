@@ -221,8 +221,8 @@ public class BuildingGenerator : MonoBehaviour
         return result;
     }
 
-private bool IsEar(List<Vector2> polygon, List<int> indices, 
-                   int prev, int curr, int next, bool isCCW)
+    private bool IsEar(List<Vector2> polygon, List<int> indices,
+                       int prev, int curr, int next, bool isCCW)
     {
         Vector2 a = polygon[prev];
         Vector2 b = polygon[curr];

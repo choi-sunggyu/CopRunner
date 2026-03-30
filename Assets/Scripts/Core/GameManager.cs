@@ -36,30 +36,16 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        //ChangeState(GameState.Playing);
         ChangeState(GameState.Lobby);
-    }
-
-    private void Update()
-    {
-        // 게임 중일 때만 타이머 작동
-        if (CurrentState == GameState.Playing)
-        {
-            RemainingTime -= Time.deltaTime;
-
-            if (RemainingTime <= 0f)
-            {
-                RemainingTime = 0f;
-                ChangeState(GameState.GameOver);
-            }
-        }
     }
 
     // 상태 변경 메서드
     public void ChangeState(GameState newState)
     {
         CurrentState = newState;
-        RemainingTime = roundDuration;
+        // 타이머는 RoundManager에서만 관리 — Playing 진입 시에만 초기화
+        if (newState == GameState.Playing)
+            RemainingTime = roundDuration;
 
         Debug.Log($"[GameManager] 상태 변경: {newState}");
 
@@ -86,7 +72,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-     private void OnEnterLobby()
+    private void OnEnterLobby()
     {
         Debug.Log("[GameManager] 로비 진입 — 플레이어 대기 중");
     }

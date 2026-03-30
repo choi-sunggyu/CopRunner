@@ -58,18 +58,17 @@ public class CatchDetector : MonoBehaviourPun
 
     private void CheckCatch()
     {
+        // 파괴된 오브젝트 정리
+        cops.RemoveAll(c => c == null);
+        robbers.RemoveAll(r => r == null);
+
         foreach (var cop in cops)
         {
-            if (cop == null) continue;
-
             foreach (var robber in robbers)
             {
-                if (robber == null) continue;
-
                 PhotonView rv = robber.GetComponent<PhotonView>();
                 if (rv == null) continue;
 
-                // ✅ 이미 체포된 도둑은 건너뜀
                 if (caughtViewIDs.Contains(rv.ViewID)) continue;
 
                 float distance = Vector3.Distance(
@@ -77,22 +76,18 @@ public class CatchDetector : MonoBehaviourPun
                     robber.transform.position
                 );
 
-                Debug.Log($"[CatchDetector] 경찰-도둑 거리: {distance:F2} | 기준: {catchRadius}");
+                if (distance > catchRadius) continue;
 
-                if (distance <= catchRadius)
+                caughtViewIDs.Add(rv.ViewID);
+
+                if (photonView == null)
                 {
-                    // ✅ 즉시 등록해서 같은 프레임에 중복 RPC 방지
-                    caughtViewIDs.Add(rv.ViewID);
-
-                    // ✅ photonView null 방어
-                    if (photonView == null)
-                    {
-                        Debug.LogError("[CatchDetector] PhotonView 없음! Inspector 확인 필요");
-                        return;
-                    }
-                    photonView.RPC("RPC_CatchRobber", RpcTarget.All, rv.ViewID);
-                    Debug.Log($"[CatchDetector] ✅ 체포 RPC 전송 → ViewID:{rv.ViewID}");
+                    Debug.LogError("[CatchDetector] PhotonView 없음! Inspector 확인 필요");
+                    return;
                 }
+
+                photonView.RPC("RPC_CatchRobber", RpcTarget.All, rv.ViewID);
+                Debug.Log($"[CatchDetector] 체포 RPC 전송 → ViewID:{rv.ViewID}");
             }
         }
     }
