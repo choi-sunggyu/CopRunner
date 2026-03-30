@@ -68,58 +68,38 @@ public class RoundManager : MonoBehaviour
         PlayerSpawner spawner = FindAnyObjectByType<PlayerSpawner>();
         spawner?.ResetSpawn();
 
-        // ✅ 1단계: 모든 클라이언트 맵 로딩 완료 대기 (MasterClient만 체크)
+        // ✅ 맵 대기 제거 — 이미 Room 단계에서 로딩 완료
+        // MasterClient 기준 전원 준비 확인만 유지
         if (PhotonNetwork.IsMasterClient)
         {
-            Debug.Log("[RoundManager] 전원 맵 준비 대기 중...");
             yield return new WaitUntil(() => NetworkManager.Instance.AllPlayersMapReady());
             Debug.Log("[RoundManager] ✅ 전원 맵 준비 완료");
         }
-        else
-        {
-            // MasterClient가 아닌 클라이언트는 내 맵만 준비되면 대기 해제
-            yield return new WaitUntil(() =>
-            {
-                object ready = PhotonNetwork.LocalPlayer.CustomProperties[NetworkManager.MAP_READY_KEY];
-                return ready != null && (bool)ready;
-            });
-        }
 
-        // ✅ 2단계: 카운트다운
         yield return StartCoroutine(Countdown());
 
-        // ✅ 3단계: 스폰 (맵 준비 완료 후)
         if (spawner != null)
             spawner.SpawnOnRoad(new List<Vector2>());
 
-        // ✅ 4단계: 스폰된 플레이어 감지 대기 (최대 3초)
+        // 스폰된 내 플레이어 감지 대기 (최대 3초)
         float waitTime = 0f;
         while (waitTime < 3f)
         {
             PlayerController[] found =
                 FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
 
-            // 내 플레이어가 스폰됐는지 확인
             bool myPlayerSpawned = false;
             foreach (var p in found)
             {
                 PhotonView pv = p.GetComponent<PhotonView>();
-                if (pv != null && pv.IsMine)
-                {
-                    myPlayerSpawned = true;
-                    break;
-                }
+                if (pv != null && pv.IsMine) { myPlayerSpawned = true; break; }
             }
-
             if (myPlayerSpawned) break;
 
             waitTime += Time.deltaTime;
             yield return null;
         }
 
-        Debug.Log("[RoundManager] ✅ 플레이어 스폰 확인 완료");
-
-        // ✅ 5단계: 역할 배정 (스폰 확인 후)
         AssignRoles();
 
         GameManager.Instance.ChangeState(GameState.Playing);
@@ -127,7 +107,6 @@ public class RoundManager : MonoBehaviour
         OnRoundStart?.Invoke();
 
         Debug.Log($"[RoundManager] {CurrentRound}라운드 시작!");
-
         yield return StartCoroutine(RoundTimer());
     }
 

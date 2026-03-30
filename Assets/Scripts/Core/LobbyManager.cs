@@ -247,6 +247,28 @@ public class LobbyManager : MonoBehaviour
         Debug.Log("[LobbyManager] RPC_StartGame 수신 → UI 숨기고 게임 시작");
         HideAllLobbyUI();
         UIManager.Instance?.HideLobbyUI();
+
+        // ✅ 맵이 이미 로딩됐으면 바로 시작, 아니면 대기
+        if (IsMapLoaded())
+        {
+            RoundManager.Instance?.StartGame();
+        }
+        else
+        {
+            Debug.Log("[LobbyManager] 맵 로딩 대기 중...");
+            OsmDataLoader.OnMapReady += OnMapReadyThenStart;
+        }
+    }
+
+    private bool IsMapLoaded()
+    {
+        object ready = PhotonNetwork.LocalPlayer.CustomProperties[NetworkManager.MAP_READY_KEY];
+        return ready != null && (bool)ready;
+    }
+
+    private void OnMapReadyThenStart()
+    {
+        OsmDataLoader.OnMapReady -= OnMapReadyThenStart;
         RoundManager.Instance?.StartGame();
     }
 
