@@ -134,13 +134,12 @@ public class RoundManager : MonoBehaviour
             PhotonView pv = player.GetComponent<PhotonView>();
             if (pv == null) continue;
 
-            // CustomProperties 직접 참조
-            string role = pv.Owner?.CustomProperties[NetworkManager.ROLE_KEY] as string ?? "";
+            PlayerRole role = NetworkManager.Instance.GetPlayerRole(pv.Owner);
             Debug.Log($"[RoundManager] {player.name} | Role: '{role}'");
 
-            bool isCop = role == "경찰";
+            bool isCop = role == PlayerRole.Cop;
 
-            player.SetRole(isCop);
+            player.SetRole(role);
 
             if (isCop)
                 CatchDetector.Instance?.RegisterCop(player);
@@ -150,7 +149,7 @@ public class RoundManager : MonoBehaviour
             if (pv.IsMine)
                 UIManager.Instance?.UpdateRoleText(isCop);
 
-            Debug.Log($"[RoundManager] {player.name} → {(isCop ? "경찰" : "도둑")} 등록 완료");
+            Debug.Log($"[RoundManager] {player.name} → {role} 등록 완료");
         }
     }
 

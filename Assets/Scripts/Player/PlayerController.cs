@@ -24,12 +24,12 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private bool isCop = false;
     public bool IsCop => isCop;
 
-    public void SetRole(bool cop)
+    public void SetRole(PlayerRole role)
     {
-        isCop = cop;
-        Debug.Log($"[PlayerController] {gameObject.name} 역할: {(cop ? "경찰" : "도둑")}");
+        isCop = role == PlayerRole.Cop;
+        Debug.Log($"[PlayerController] {gameObject.name} 역할: {role}");
 
-        // ✅ 등록 로직 없음 — RoundManager.AssignRoles()가 담당
+        // 등록 로직 없음 — RoundManager.AssignRoles()가 담당
     }
 
     public void SetCaught()

@@ -37,7 +37,7 @@ public class LobbyManager : MonoBehaviour
     [SerializeField] private Button     spectatorLeaveButton;
     [SerializeField] private TextMeshProUGUI spectatorStatusText;
 
-    private string selectedRole = "[역할]";
+    private PlayerRole selectedRole = PlayerRole.None;
 
     private bool isReady = false;
     private List<GameObject> playerEntries = new(); // 항목 직접 관리
@@ -63,8 +63,8 @@ public class LobbyManager : MonoBehaviour
         readyButton?.onClick.AddListener(OnReadyToggle);
         startButton?.onClick.AddListener(OnStartGame);
         leaveRoomButton?.onClick.AddListener(OnLeaveRoom);
-        copButton?.onClick.AddListener(() => OnRoleSelect("경찰"));
-        robberButton?.onClick.AddListener(() => OnRoleSelect("도둑"));
+        copButton?.onClick.AddListener(() => OnRoleSelect(PlayerRole.Cop));
+        robberButton?.onClick.AddListener(() => OnRoleSelect(PlayerRole.Robber));
 
         ShowMainMenu();
         SetStatus("서버 연결 중...");
@@ -199,9 +199,9 @@ public class LobbyManager : MonoBehaviour
 
         foreach (Player player in PhotonNetwork.CurrentRoom.Players.Values)
         {
-            string role = NetworkManager.Instance.GetPlayerRole(player);
-            if (role == "경찰")      copCount++;
-            else if (role == "도둑") robberCount++;
+            PlayerRole role = NetworkManager.Instance.GetPlayerRole(player);
+            if (role == PlayerRole.Cop)    copCount++;
+            else if (role == PlayerRole.Robber) robberCount++;
         }
 
         // 역할 미선택 플레이어 있는지
@@ -303,14 +303,14 @@ public class LobbyManager : MonoBehaviour
     private void OnLeaveRoom()
     {
         isReady   = false;
-        selectedRole = "역할";
+        selectedRole = PlayerRole.None;
 
         // Photon CustomProperties 초기화
-        NetworkManager.Instance.SetRole("");
+        NetworkManager.Instance.SetRole(PlayerRole.None);
         NetworkManager.Instance.SetReady(false);
 
         // 버튼 색상 초기화
-        UpdateRoleButtons("");
+        UpdateRoleButtons(PlayerRole.None);
 
         NetworkManager.Instance.LeaveRoom();
         ShowMainMenu();
@@ -326,10 +326,10 @@ public class LobbyManager : MonoBehaviour
     public void OnJoinedRoom()
     {
         isReady      = false;
-        selectedRole = "역할";
+        selectedRole = PlayerRole.None;
 
         // 역할 버튼 색상 초기화
-        UpdateRoleButtons("");
+        UpdateRoleButtons(PlayerRole.None);
 
         // 레디 버튼 텍스트 초기화
         TextMeshProUGUI btnText = readyButton?.GetComponentInChildren<TextMeshProUGUI>();
@@ -368,11 +368,16 @@ public class LobbyManager : MonoBehaviour
                     player.CustomProperties.TryGetValue(NetworkManager.READY_KEY, out isReadyObj);
                     bool ready = isReadyObj != null && (bool)isReadyObj;
 
-                    string role      = NetworkManager.Instance.GetPlayerRole(player);
+                    PlayerRole role      = NetworkManager.Instance.GetPlayerRole(player);
+                    string roleDisplay   = role switch {
+                        PlayerRole.Cop    => "경찰",
+                        PlayerRole.Robber => "도둑",
+                        _                 => "미선택"
+                    };
                     string masterTag = player.IsMasterClient ? "[방장] " : "";
                     string readyTag  = ready ? "[레디]" : "[대기]";
 
-                    text.text = $"{masterTag}{player.NickName} [{role}] {readyTag}";
+                    text.text = $"{masterTag}{player.NickName} [{roleDisplay}] {readyTag}";
                     Debug.Log($"[LobbyManager] 텍스트: {text.text}");
                 }
             }
@@ -393,7 +398,7 @@ public class LobbyManager : MonoBehaviour
         Debug.Log($"[LobbyManager] {message}");
     }
 
-    private void OnRoleSelect(string role)
+    private void OnRoleSelect(PlayerRole role)
     {
         selectedRole = role;
         NetworkManager.Instance.SetRole(role);
@@ -402,12 +407,12 @@ public class LobbyManager : MonoBehaviour
         UpdateRoleButtons(role);
     }
 
-    private void UpdateRoleButtons(string selectedRole)
+    private void UpdateRoleButtons(PlayerRole selectedRole)
     {
         if (copButton != null)
         {
             ColorBlock cb    = copButton.colors;
-            cb.normalColor   = selectedRole == "경찰"
+            cb.normalColor   = selectedRole == PlayerRole.Cop
                 ? new Color(0.2f, 0.4f, 0.9f)  // 선택됨
                 : new Color(0.4f, 0.4f, 0.4f); // 미선택
             copButton.colors = cb;
@@ -416,7 +421,7 @@ public class LobbyManager : MonoBehaviour
         if (robberButton != null)
         {
             ColorBlock cb    = robberButton.colors;
-            cb.normalColor   = selectedRole == "도둑"
+            cb.normalColor   = selectedRole == PlayerRole.Robber
                 ? new Color(0.9f, 0.2f, 0.2f)  // 선택됨
                 : new Color(0.4f, 0.4f, 0.4f); // 미선택
             robberButton.colors = cb;

@@ -131,21 +131,18 @@ public class NetworkManager : MonoBehaviourPunCallbacks
         return true;
     }
 
-    public void SetRole(string role)
+    public void SetRole(PlayerRole role)
     {
-        Hashtable props = new Hashtable { { ROLE_KEY, role } };
+        Hashtable props = new Hashtable { { ROLE_KEY, (int)role } };
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);
         Debug.Log($"[NetworkManager] 역할 설정: {role}");
     }
 
-    public string GetPlayerRole(Player player)
+    public PlayerRole GetPlayerRole(Player player)
     {
-        if (player.CustomProperties.TryGetValue(ROLE_KEY, out object role))
-        {
-            string roleStr = role as string;
-            return string.IsNullOrEmpty(roleStr) ? "" : roleStr;  // ✅ "역할" → "" 로 수정
-        }
-        return "";
+        if (player.CustomProperties.TryGetValue(ROLE_KEY, out object role) && role is int roleInt)
+            return (PlayerRole)roleInt;
+        return PlayerRole.None;
     }
 
     // ── Photon 콜백 ──────────────────────────────
