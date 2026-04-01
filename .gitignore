@@ -30,6 +30,7 @@ Assets/StreamingAssets/config.json
 Assets/StreamingAssets/api_keys.json
 Assets/StreamingAssets/api_keys.json.meta
 *.unitypackage
+*.zip
 Assets/Scripts/Core/ApiKeys.cs
 Assets/Scripts/Core/ApiKeys.cs.meta
 Assets/Fonts/*.asset
