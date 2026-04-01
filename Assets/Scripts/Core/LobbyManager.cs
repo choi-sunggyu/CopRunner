@@ -278,7 +278,20 @@ public class LobbyManager : MonoBehaviour
     private IEnumerator WaitAllPlayersMapReady()
     {
         Debug.Log("[LobbyManager] 전원 맵 준비 대기 중...");
-        yield return new WaitUntil(() => NetworkManager.Instance.AllPlayersMapReady());
+
+        float elapsed = 0f;
+        const float timeout = 30f;
+
+        while (!NetworkManager.Instance.AllPlayersMapReady())
+        {
+            if (elapsed >= timeout)
+            {
+                Debug.LogWarning("[LobbyManager] 맵 준비 타임아웃 — 준비된 플레이어만으로 게임 시작");
+                break;
+            }
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
 
         Debug.Log("[LobbyManager] ✅ 전원 맵 준비 완료 → 게임 시작 RPC 전송");
         PhotonView pv = GetComponent<PhotonView>();
