@@ -162,10 +162,10 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: "\uD50C\uB808\uC774\uC5B4  \uC774\uB984"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 58f876d4d5cc644419c1e051d13d0a9d, type: 2}
-  m_sharedMaterial: {fileID: -7298655900159620363, guid: 58f876d4d5cc644419c1e051d13d0a9d, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: f13b4d426629124469957a32adbdd3d2, type: 2}
+  m_sharedMaterial: {fileID: 809994086079619507, guid: f13b4d426629124469957a32adbdd3d2, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
